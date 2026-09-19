@@ -85,7 +85,7 @@ export function ProjectCard({ project }: { project: Project }) {
             ))}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-0  pointer-events-none z-10" />
       </div>
 
       {/* Card Front Content */}
@@ -133,7 +133,7 @@ export function ProjectCard({ project }: { project: Project }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-30 flex flex-col bg-slate-950 text-white p-6 justify-between overflow-y-auto"
+            className="absolute inset-0 z-30 flex flex-col bg-white text-black p-6 justify-between overflow-y-auto"
           >
             {/* Sliding Left & Right Door Curtain effect */}
             <motion.div
@@ -160,7 +160,7 @@ export function ProjectCard({ project }: { project: Project }) {
             <div className="relative z-30 flex flex-col justify-between h-full">
               <div>
                 <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-slate-800">
-                  <div className="flex items-center gap-2 text-primary font-black uppercase text-xs">
+                  <div className="flex items-center gap-2 text-slate-950 font-black uppercase text-xs">
                     <Sparkles size={16} />
                     <span>Project Specs</span>
                   </div>
@@ -177,10 +177,10 @@ export function ProjectCard({ project }: { project: Project }) {
                   </button>
                 </div>
 
-                <h3 className="text-2xl font-black uppercase text-white mb-2">
+                <h3 className="text-2xl font-black uppercase text-primary mb-2">
                   {project.title}
                 </h3>
-                <p className="text-xs text-slate-300 font-medium leading-relaxed mb-4">
+                <p className="text-xs text-slate-600 font-medium leading-relaxed mb-4">
                   {project.description}
                 </p>
 
@@ -190,14 +190,16 @@ export function ProjectCard({ project }: { project: Project }) {
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {project.contributors.map((c) => (
+                      <a href={c.github} target="blank">
                       <div
                         key={c.name}
-                        className="flex items-center gap-1.5 border border-slate-700 bg-slate-900 px-2 py-1 rounded text-xs text-slate-200"
+                        className="flex items-center gap-1.5 border border-slate-700 bg-slate-900 px-2 py-1 rounded text-xs text-white  hover:bg-white hover:text-slate-950 transition-colors"
                       >
-                        <Users size={12} className="text-primary" />
+                        <Users size={12}/>
                         <span className="font-bold">{c.name}</span>
-                        {c.role && <span className="text-[10px] text-slate-400">({c.role})</span>}
+                        {c.role && <span className="text-[10px]">({c.role})</span>}
                       </div>
+                      </a>
                     ))}
                   </div>
                 </div>
