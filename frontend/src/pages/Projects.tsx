@@ -43,7 +43,9 @@ export default function Projects() {
             demoLink: p.demoLink,
             repoLink: p.repoLink,
             images: p.gallery && p.gallery.length > 0 
-              ? p.gallery.map((img: any) => urlFor(img).url()) 
+              ? p.gallery
+                  .filter((img: any) => img && img.asset)
+                  .map((img: any) => urlFor(img).url()) 
               : undefined,
             featured: p.featured,
           }));
