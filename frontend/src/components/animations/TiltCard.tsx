@@ -63,7 +63,6 @@ export default function TiltCard({
         rotateY,
         transformPerspective: 1000,
         y: translateY,
-        transformStyle: "preserve-3d",
         willChange: "transform",
         position: "relative",
       }}
