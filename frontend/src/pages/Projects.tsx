@@ -76,13 +76,13 @@ export default function Projects() {
         description="Discover the innovative projects developed by CODEX members across various engineering disciplines."
       />
       <div className="bg-background-light min-h-screen font-display text-slate-900">
-        <main className="max-w-7xl mx-auto px-6 md:px-20 py-16">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-20 py-16">
           
           <ScrollReveal className="mb-20">
             <div className="inline-block bg-primary text-white px-4 py-1 mb-4 font-bold uppercase tracking-widest text-xs border-2 border-slate-900">
               Our Work
             </div>
-            <h1 className="text-6xl md:text-8xl font-black text-slate-900 uppercase leading-none tracking-tighter mb-6 font-display">
+            <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-slate-900 uppercase leading-none tracking-tighter mb-6 font-display break-words">
               Innovative <br />
               <span className="text-primary italic">Projects</span>
             </h1>
@@ -119,7 +119,7 @@ export default function Projects() {
           ) : (
             <StaggerContainer key={activeCategory} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredProjects.map((project) => (
-                <StaggerItem key={project.id}>
+                <StaggerItem key={project.id} className="min-w-0 w-full h-full">
                   <ProjectCard project={project} />
                 </StaggerItem>
               ))}
