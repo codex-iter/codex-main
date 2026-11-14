@@ -65,6 +65,10 @@ async def fetch_github(session: aiohttp.ClientSession, handle: str) -> dict:
         "github_repos": 0,
         "github_prs": 0,
         "github_issues": 0,
+        "_fetch_ok": bool(
+            not isinstance(gql_data, Exception)
+            and gql_data.get("data", {}).get("user") is not None
+        ),
     }
 
     if not isinstance(gql_data, Exception) and gql_data:

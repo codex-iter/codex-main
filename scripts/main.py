@@ -158,9 +158,23 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
     yesterday_snap = recent_snapshots[0] if len(recent_snapshots) > 0 else None
     day_before_snap = recent_snapshots[1] if len(recent_snapshots) > 1 else None
 
+    if not yesterday_snap:
+        failed_platforms = [
+            platform
+            for platform, handle, data in (
+                ("GitHub", gh_handle, gh_data), ("Codeforces", cf_handle, cf_data),
+                ("LeetCode", lc_handle, lc_data), ("CodeChef", cc_handle, cc_data),
+                ("GFG", gfg_handle, gfg_data), ("HackerRank", hr_handle, hr_data),
+            )
+            if handle and not data.get("_fetch_ok")
+        ]
+        if failed_platforms:
+            log.warning("  ⏭ Skipping initial snapshot for %s; unavailable: %s", name, ", ".join(failed_platforms))
+            return {"_skip_sync": True}
+
     if gh_handle and gh_data:
         gh_commits = gh_data.get("github_contributions", 0)
-        if yesterday_snap and gh_commits < yesterday_snap.get("raw_github_commits", 0):
+        if yesterday_snap and (not gh_data.get("_fetch_ok") or gh_commits < yesterday_snap.get("raw_github_commits", 0)):
             snapshot.update({
                 "github_contributions": yesterday_snap.get("raw_github_commits", 0),
                 "github_repos": yesterday_snap.get("github_repos", 0),
@@ -177,7 +191,7 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if cf_handle and cf_data:
         cf_solved = cf_data.get("codeforces_solved", 0)
-        if yesterday_snap and cf_solved < yesterday_snap.get("codeforces_solved", 0):
+        if yesterday_snap and (not cf_data.get("_fetch_ok") or cf_solved < yesterday_snap.get("codeforces_solved", 0)):
             snapshot.update({
                 "codeforces_rating": yesterday_snap.get("codeforces_rating", 0),
                 "codeforces_max_rating": yesterday_snap.get("codeforces_max_rating", 0),
@@ -198,7 +212,7 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if lc_handle and lc_data:
         lc_total = lc_data.get("leetcode_total", 0)
-        if yesterday_snap and lc_total < yesterday_snap.get("leetcode_total", 0):
+        if yesterday_snap and (not lc_data.get("_fetch_ok") or lc_total < yesterday_snap.get("leetcode_total", 0)):
             snapshot.update({
                 "leetcode_easy": yesterday_snap.get("leetcode_easy", 0),
                 "leetcode_medium": yesterday_snap.get("leetcode_medium", 0),
@@ -228,7 +242,7 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if cc_handle and cc_data:
         cc_solved = cc_data.get("codechef_solved", 0)
-        if yesterday_snap and cc_solved < yesterday_snap.get("codechef_solved", 0):
+        if yesterday_snap and (not cc_data.get("_fetch_ok") or cc_solved < yesterday_snap.get("codechef_solved", 0)):
             snapshot.update({
                 "codechef_rating": yesterday_snap.get("codechef_rating", 0),
                 "codechef_max_rating": yesterday_snap.get("codechef_max_rating", 0),
@@ -251,7 +265,7 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if gfg_handle and gfg_data:
         gfg_solved = gfg_data.get("gfg_solved", 0)
-        if yesterday_snap and gfg_solved < yesterday_snap.get("gfg_solved", 0):
+        if yesterday_snap and (not gfg_data.get("_fetch_ok") or gfg_solved < yesterday_snap.get("gfg_solved", 0)):
             snapshot.update({
                 "gfg_solved": yesterday_snap.get("gfg_solved", 0),
                 "gfg_score": yesterday_snap.get("gfg_score", 0),
@@ -277,7 +291,7 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if hr_handle and hr_data:
         hr_badges = hr_data.get("hackerrank_badges", 0)
-        if yesterday_snap and hr_badges < yesterday_snap.get("hackerrank_badges", 0):
+        if yesterday_snap and (not hr_data.get("_fetch_ok") or hr_badges < yesterday_snap.get("hackerrank_badges", 0)):
             snapshot["hackerrank_badges"] = yesterday_snap.get("hackerrank_badges", 0)
         else:
             snapshot["hackerrank_badges"] = hr_badges
@@ -397,6 +411,10 @@ async def run_sync() -> None:
                 name = member.get("full_name", member["id"])
                 if isinstance(result, Exception):
                     log.error("  ✗ Failed to sync %s: %s", name, result)
+                    fail_count += 1
+                    continue
+                if result.get("_skip_sync"):
+                    log.warning("  ⏭ Skipped %s; waiting for a complete initial fetch", name)
                     fail_count += 1
                     continue
                 try:

@@ -1,5 +1,8 @@
 import asyncio
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import logging
+import random
 import aiohttp
 
 log = logging.getLogger(__name__)
@@ -14,6 +17,19 @@ BROWSER_HEADERS = {
     ),
     "Accept": "application/json",
 }
+
+
+def retry_delay(retry_after: str | None, attempt: int) -> float:
+    """Use a server-provided retry window, otherwise exponential backoff with jitter."""
+    if retry_after:
+        try:
+            return max(0.0, float(retry_after))
+        except ValueError:
+            try:
+                return max(0.0, (parsedate_to_datetime(retry_after) - datetime.now(timezone.utc)).total_seconds())
+            except (TypeError, ValueError):
+                pass
+    return (2 ** attempt) + random.uniform(0, 0.5)
 
 async def safe_fetch(
     session: aiohttp.ClientSession,
@@ -42,7 +58,7 @@ async def safe_fetch(
                 ) as resp:
                     if resp.status == 429:
                         log.warning("    HTTP 429 fetching %s (Attempt %d/%d) — Retrying...", url, attempt + 1, max_retries)
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(retry_delay(resp.headers.get("Retry-After"), attempt))
                         continue
                     resp.raise_for_status()
                     return await resp.json(content_type=None)
@@ -52,7 +68,7 @@ async def safe_fetch(
                 ) as resp:
                     if resp.status == 429:
                         log.warning("    HTTP 429 fetching %s (Attempt %d/%d) — Retrying...", url, attempt + 1, max_retries)
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(retry_delay(resp.headers.get("Retry-After"), attempt))
                         continue
                     resp.raise_for_status()
                     return await resp.json(content_type=None)

@@ -59,6 +59,7 @@ async def fetch_hackerrank(session: aiohttp.ClientSession, handle: str) -> dict:
         "hackerrank_badges": hr_badge_count,
         "hr_badges_list": hr_badges_list,
         "hr_topics": hr_topics,
+        "_fetch_ok": bool(badges_payload or stats_resp),
     }
     log.info("    ✓ HackerRank   -> badges=%d", hr_badge_count)
     return result

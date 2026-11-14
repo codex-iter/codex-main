@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import aiohttp
-from .utils import _safe_int, BROWSER_HEADERS, REQUEST_TIMEOUT
+from .utils import _safe_int, BROWSER_HEADERS, REQUEST_TIMEOUT, retry_delay
 
 log = logging.getLogger(__name__)
 
@@ -10,7 +10,7 @@ cf_semaphore = asyncio.Semaphore(1)
 async def make_cf_request(session: aiohttp.ClientSession, url: str, max_retries: int = 3) -> dict:
     """
     Makes a request to Codeforces with exponential backoff on 429/503.
-    Limits concurrency using a module-level semaphore and pads requests with a 1s delay.
+    Limits concurrency using a module-level semaphore and spaces requests two seconds apart.
     """
     for attempt in range(1, max_retries + 1):
         async with cf_semaphore:
@@ -20,8 +20,7 @@ async def make_cf_request(session: aiohttp.ClientSession, url: str, max_retries:
                     if resp.status in (429, 503):
                         log.warning("    Codeforces HTTP %s on %s (Attempt %d/%d)", resp.status, url, attempt, max_retries)
                         if attempt < max_retries:
-                            backoff = 2 ** attempt
-                            await asyncio.sleep(backoff)
+                            await asyncio.sleep(retry_delay(resp.headers.get("Retry-After"), attempt))
                             continue
                         return {}
                     
@@ -43,8 +42,8 @@ async def make_cf_request(session: aiohttp.ClientSession, url: str, max_retries:
                 log.warning("    ERROR fetching %s — %s", url, exc)
                 return {}
             finally:
-                # Ensure we never flood CF, minimum 1.0s delay between any requests
-                await asyncio.sleep(1.0)
+                # Codeforces permits one API request every two seconds.
+                await asyncio.sleep(2.0)
                 
     return {}
 
@@ -96,6 +95,10 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
         "codeforces_rank_title": rank_title,
         "codeforces_solved": len(solved),
         "cf_contests_attended": cf_contests,
+        "_fetch_ok": any(
+            data and data.get("status") == "OK"
+            for data in (info_data, status_data, rating_data)
+        ),
     }
     log.info("    ✓ Codeforces   -> %s", result)
     return result
