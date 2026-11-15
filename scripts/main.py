@@ -174,41 +174,60 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if gh_handle and gh_data:
         gh_commits = gh_data.get("github_contributions", 0)
-        if yesterday_snap and (not gh_data.get("_fetch_ok") or gh_commits < yesterday_snap.get("raw_github_commits", 0)):
-            snapshot.update({
-                "github_contributions": yesterday_snap.get("raw_github_commits", 0),
-                "github_repos": yesterday_snap.get("github_repos", 0),
-                "github_prs": yesterday_snap.get("github_prs", 0),
-                "github_issues": yesterday_snap.get("github_issues", 0),
-            })
+        gh_repos = gh_data.get("github_repos", 0)
+        gh_prs = gh_data.get("github_prs", 0)
+        gh_issues = gh_data.get("github_issues", 0)
+
+        # Commits & Repos from GraphQL
+        if yesterday_snap and (not gh_data.get("_gql_ok", gh_data.get("_fetch_ok")) or gh_commits < yesterday_snap.get("raw_github_commits", 0)):
+            snapshot["github_contributions"] = yesterday_snap.get("raw_github_commits", 0)
+            snapshot["github_repos"] = yesterday_snap.get("github_repos", 0)
         else:
-            snapshot.update({
-                "github_contributions": gh_commits,
-                "github_repos": gh_data.get("github_repos", 0),
-                "github_prs": gh_data.get("github_prs", 0),
-                "github_issues": gh_data.get("github_issues", 0),
-            })
+            snapshot["github_contributions"] = gh_commits
+            snapshot["github_repos"] = gh_repos
+
+        # PRs protected independently against Search API secondary rate limit
+        if yesterday_snap and (not gh_data.get("_prs_ok", True) or gh_prs < yesterday_snap.get("github_prs", 0)):
+            snapshot["github_prs"] = yesterday_snap.get("github_prs", 0)
+        else:
+            snapshot["github_prs"] = gh_prs
+
+        # Issues protected independently against Search API secondary rate limit
+        if yesterday_snap and (not gh_data.get("_issues_ok", True) or gh_issues < yesterday_snap.get("github_issues", 0)):
+            snapshot["github_issues"] = yesterday_snap.get("github_issues", 0)
+        else:
+            snapshot["github_issues"] = gh_issues
 
     if cf_handle and cf_data:
         cf_solved = cf_data.get("codeforces_solved", 0)
-        if yesterday_snap and (not cf_data.get("_fetch_ok") or cf_solved < yesterday_snap.get("codeforces_solved", 0)):
-            snapshot.update({
-                "codeforces_rating": yesterday_snap.get("codeforces_rating", 0),
-                "codeforces_max_rating": yesterday_snap.get("codeforces_max_rating", 0),
-                "codeforces_rank_title": yesterday_snap.get("codeforces_rank_title", "Unrated"),
-                "codeforces_solved": yesterday_snap.get("codeforces_solved", 0),
-                "codeforces_contests": yesterday_snap.get("codeforces_contests", 0)
-            })
+        cf_rating = cf_data.get("codeforces_rating", 0)
+        cf_max_rating = cf_data.get("codeforces_max_rating", 0)
+        cf_rank = cf_data.get("codeforces_rank_title", "Unrated")
+        cf_contests = cf_data.get("cf_contests_attended", 0)
+
+        # Solved problems protection
+        if yesterday_snap and (not cf_data.get("_status_ok", cf_data.get("_fetch_ok")) or cf_solved < yesterday_snap.get("codeforces_solved", 0)):
+            snapshot["codeforces_solved"] = yesterday_snap.get("codeforces_solved", 0)
+        else:
+            snapshot["codeforces_solved"] = cf_solved
+
+        # Rating & rank protection: do not wipe rating if user.info failed or returned 0 while yesterday had rating
+        if yesterday_snap and (not cf_data.get("_info_ok", cf_data.get("_fetch_ok")) or (cf_rating == 0 and yesterday_snap.get("codeforces_rating", 0) > 0)):
+            snapshot["codeforces_rating"] = yesterday_snap.get("codeforces_rating", 0)
+            snapshot["codeforces_max_rating"] = yesterday_snap.get("codeforces_max_rating", 0)
+            snapshot["codeforces_rank_title"] = yesterday_snap.get("codeforces_rank_title", "Unrated")
+        else:
+            snapshot["codeforces_rating"] = cf_rating
+            snapshot["codeforces_max_rating"] = cf_max_rating
+            snapshot["codeforces_rank_title"] = cf_rank
+
+        # Contest count protection
+        if yesterday_snap and (not cf_data.get("_rating_ok", cf_data.get("_fetch_ok")) or cf_contests < yesterday_snap.get("codeforces_contests", 0)):
+            snapshot["codeforces_contests"] = yesterday_snap.get("codeforces_contests", 0)
             _cf_contests = yesterday_snap.get("codeforces_contests", 0)
         else:
-            snapshot.update({
-                "codeforces_rating": cf_data.get("codeforces_rating", 0),
-                "codeforces_max_rating": cf_data.get("codeforces_max_rating", 0),
-                "codeforces_rank_title": cf_data.get("codeforces_rank_title", "Unrated"),
-                "codeforces_solved": cf_solved,
-                "codeforces_contests": cf_data.get("cf_contests_attended", 0)
-            })
-            _cf_contests = cf_data.get("cf_contests_attended", 0)
+            snapshot["codeforces_contests"] = cf_contests
+            _cf_contests = cf_contests
 
     if lc_handle and lc_data:
         lc_total = lc_data.get("leetcode_total", 0)
@@ -260,8 +279,6 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
             })
             _cc_topics = cc_data.get("cc_topics", {})
             _cc_contests = cc_data.get("cc_contests_attended", 0)
-            snapshot["active_days"] += cc_data.get("cc_active_days", 0)
-            snapshot["total_submissions"] += cc_data.get("cc_total_submissions", 0)
 
     if gfg_handle and gfg_data:
         gfg_solved = gfg_data.get("gfg_solved", 0)
@@ -286,8 +303,6 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
                 "gfg_hard": gfg_data.get("gfg_hard", 0),
             })
             _gfg_topics = gfg_data.get("gfg_topics", {})
-            snapshot["active_days"] += gfg_data.get("gfg_active_days", 0)
-            snapshot["total_submissions"] += gfg_data.get("gfg_total_submissions", 0)
 
     if hr_handle and hr_data:
         hr_badges = hr_data.get("hackerrank_badges", 0)
@@ -338,18 +353,27 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
     snapshot["raw_github_commits"] = today_raw
     snapshot["valid_github_commits"] = yesterday_valid + capped_daily_commits
 
-    if yesterday_snap and yesterday_snap.get("snapshot_date") == yesterday_str:
-        yesterday_total = calculate_total_activity(yesterday_snap)
+    days_since_snap = 999
+    if yesterday_snap and yesterday_snap.get("snapshot_date"):
+        try:
+            last_date = datetime.strptime(yesterday_snap["snapshot_date"], "%Y-%m-%d").date()
+            days_since_snap = (today_date - last_date).days
+        except Exception:
+            days_since_snap = 999
+
+    yesterday_total = calculate_total_activity(yesterday_snap) if yesterday_snap else 0
+    prev_max_streak = yesterday_snap.get("max_streak", 0) if yesterday_snap else 0
+    prev_total = yesterday_total
+
+    if days_since_snap == 1:
         day_before_total = calculate_total_activity(day_before_snap) if day_before_snap else 0
         coded_yesterday = yesterday_total > day_before_total
-        
         base_streak = yesterday_snap.get("current_streak", 0) if coded_yesterday else 0
-        prev_max_streak = yesterday_snap.get("max_streak", 0)
-        prev_total = yesterday_total
+    elif days_since_snap == 2:
+        # Grace window for a single missed sync day: maintain current streak baseline
+        base_streak = yesterday_snap.get("current_streak", 0)
     else:
         base_streak = 0
-        prev_max_streak = yesterday_snap.get("max_streak", 0) if yesterday_snap else 0
-        prev_total = calculate_total_activity(yesterday_snap) if yesterday_snap else 0
 
     current_total = calculate_total_activity(snapshot)
 
@@ -360,8 +384,15 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     snapshot["max_streak"] = max(prev_max_streak, snapshot["current_streak"])
 
-    if yesterday_snap and snapshot["active_days"] < yesterday_snap.get("active_days", 0):
-        snapshot["active_days"] = yesterday_snap.get("active_days", 0)
+    # Active days progression: cumulative count of days where coding activity was recorded
+    if yesterday_snap:
+        prev_active_days = yesterday_snap.get("active_days", 0)
+        if current_total > prev_total:
+            snapshot["active_days"] = prev_active_days + 1
+        else:
+            snapshot["active_days"] = prev_active_days
+    else:
+        snapshot["active_days"] = 1 if current_total > 0 else 0
 
     scores = calculate_score(snapshot)
     snapshot["total_score"] = scores["total_score"]
@@ -444,7 +475,10 @@ async def run_sync() -> None:
 
     try:
         log.info("Starting rolling GitHub contribution aggregate sync...")
-        subprocess.run(["python", "scripts/backfill_club_github.py"], check=True)
+        import sys
+        from pathlib import Path
+        backfill_script = str(Path(__file__).resolve().parent / "backfill_club_github.py")
+        subprocess.run([sys.executable, backfill_script], check=True)
         log.info("GitHub contribution sync finished successfully.")
     except Exception as exc:
         log.error("Failed to run GitHub sync hook: %s", exc)

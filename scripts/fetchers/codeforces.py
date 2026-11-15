@@ -86,8 +86,12 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
 
     # 3. Contest history -> count attended
     cf_contests = 0
-    if rating_data and rating_data.get("status") == "OK":
+    rating_ok = bool(rating_data and rating_data.get("status") == "OK")
+    if rating_ok:
         cf_contests = len(rating_data.get("result", []))
+
+    info_ok = bool(info_data and info_data.get("status") == "OK" and info_data.get("result"))
+    status_ok = bool(status_data and status_data.get("status") == "OK")
 
     result = {
         "codeforces_rating": rating,
@@ -95,10 +99,10 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
         "codeforces_rank_title": rank_title,
         "codeforces_solved": len(solved),
         "cf_contests_attended": cf_contests,
-        "_fetch_ok": any(
-            data and data.get("status") == "OK"
-            for data in (info_data, status_data, rating_data)
-        ),
+        "_info_ok": info_ok,
+        "_status_ok": status_ok,
+        "_rating_ok": rating_ok,
+        "_fetch_ok": info_ok or status_ok or rating_ok,
     }
     log.info("    ✓ Codeforces   -> %s", result)
     return result

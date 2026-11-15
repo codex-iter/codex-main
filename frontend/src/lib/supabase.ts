@@ -11,4 +11,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /** Singleton Supabase client — import this anywhere in the app. */
-export const supabase = createClient(supabaseUrl ?? "", supabaseAnonKey ?? "");
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-anon-key"
+);

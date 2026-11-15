@@ -14,7 +14,7 @@ concurrency:
 jobs:
   sync:
     name: Run Stats Sync
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository

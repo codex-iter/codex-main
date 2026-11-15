@@ -396,32 +396,51 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
 
     const memberIds = members.map(m => m.id);
 
-    // Step C: Query activity_snapshots
-    const { data: snapshots, error: snapshotsError } = await supabase
-      .from("activity_snapshots")
-      .select(`
-        member_id,
-        snapshot_date,
-        total_score,
-        dsa_score,
-        dev_score,
-        leetcode_total,
-        codeforces_solved,
-        codechef_solved,
-        gfg_solved,
-        github_contributions,
-        raw_github_commits,
-        valid_github_commits,
-        github_prs,
-        current_streak
-      `)
-      .gte("snapshot_date", lastDayStr)
-      .in("member_id", memberIds)
-      .order("snapshot_date", { ascending: true });
+    // Step C: Query activity_snapshots with pagination to avoid 1,000-row PostgREST ceiling
+    const PAGE_SIZE = 1000;
+    let snapshots: any[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (snapshotsError) {
-      console.error("[codexApi] getMonthlyLeaderboard snapshots error:", snapshotsError.message);
-      return [];
+    while (hasMore) {
+      const { data: pageData, error: snapshotsError } = await supabase
+        .from("activity_snapshots")
+        .select(`
+          member_id,
+          snapshot_date,
+          total_score,
+          dsa_score,
+          dev_score,
+          leetcode_total,
+          codeforces_solved,
+          codechef_solved,
+          gfg_solved,
+          github_contributions,
+          raw_github_commits,
+          valid_github_commits,
+          github_prs,
+          current_streak
+        `)
+        .gte("snapshot_date", lastDayStr)
+        .in("member_id", memberIds)
+        .order("snapshot_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (snapshotsError) {
+        console.error("[codexApi] getMonthlyLeaderboard snapshots error:", snapshotsError.message);
+        return [];
+      }
+
+      if (pageData && pageData.length > 0) {
+        snapshots = snapshots.concat(pageData);
+        if (pageData.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
     // Step D: Group by member_id

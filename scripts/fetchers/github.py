@@ -60,15 +60,31 @@ async def fetch_github(session: aiohttp.ClientSession, handle: str) -> dict:
         return_exceptions=True
     )
     
+    gql_ok = bool(
+        not isinstance(gql_data, Exception)
+        and gql_data
+        and gql_data.get("data", {}).get("user") is not None
+    )
+    prs_ok = bool(
+        not isinstance(pr_data, Exception)
+        and pr_data
+        and "total_count" in pr_data
+    )
+    issues_ok = bool(
+        not isinstance(issue_data, Exception)
+        and issue_data
+        and "total_count" in issue_data
+    )
+
     result = {
         "github_contributions": 0,
         "github_repos": 0,
         "github_prs": 0,
         "github_issues": 0,
-        "_fetch_ok": bool(
-            not isinstance(gql_data, Exception)
-            and gql_data.get("data", {}).get("user") is not None
-        ),
+        "_gql_ok": gql_ok,
+        "_prs_ok": prs_ok,
+        "_issues_ok": issues_ok,
+        "_fetch_ok": gql_ok,
     }
 
     if not isinstance(gql_data, Exception) and gql_data:
