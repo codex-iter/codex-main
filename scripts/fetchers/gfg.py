@@ -64,6 +64,7 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
         "gfg_hard": gfg_hard,
         "gfg_max_rating": _gfg_max_rating,
         "gfg_topics": gfg_topics,
+        "_fetch_ok": bool(summary_payload or stats_resp or rating_resp),
     }
     log.info("    ✓ GFG          -> solved=%d [S=%d B=%d E=%d M=%d H=%d]",
              solved, gfg_school, gfg_basic, gfg_easy, gfg_medium, gfg_hard)

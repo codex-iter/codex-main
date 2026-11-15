@@ -107,6 +107,7 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
         "lc_badge_name": lc_badge,
         "_lc_summary": summary,   # kept for topic aggregation in build_topic_stats
         "_lc_badges_list": lc_badges_list,
+        "_fetch_ok": bool(summary or contest_data or badges_resp),
     }
     log.info("    ✓ LeetCode     -> easy=%d med=%d hard=%d total=%d contests=%d",
              easy, medium, hard, total, lc_contests)
