@@ -413,10 +413,10 @@ The platform converts multi-platform activity into a **bounded Developer Score c
 ├─────────────────────┬─────────────────────┬────────────────────────────┤
 │   DSA SCORE         │   DEV SCORE         │   CONSISTENCY BONUS        │
 │   Max: 500 Points   │   Max: 500 Points   │   Max: 200 Points          │
-│   • Rating (250)    │   • Commits (200)   │   • Active Days (100)      │
+│   • Rating (250)    │   • Commits (100)   │   • Active Days (100)      │
 │   • Volume (150)    │   • PRs (175)       │   • Max Streak (100)       │
 │   • Contests (100)  │   • Issues (75)     │                            │
-│                     │   • Repos (50)      │                            │
+│                     │   • Repos (150)     │                            │
 └─────────────────────┴─────────────────────┴────────────────────────────┘
 ```
 
@@ -457,14 +457,14 @@ $$\text{Contest Pts} = \min\left(100, \frac{\text{Total Contests}}{50} \times 10
 
 $$\text{Dev Score} = \min(500, \text{Commits Pts} + \text{PRs Pts} + \text{Issues Pts} + \text{Repos Pts})$$
 
-- **Valid GitHub Commits (Max 200 pts):** Target: 1,000 valid commits
-  $$\text{Commits Pts} = \min\left(200, \frac{\text{valid\_github\_commits}}{1000} \times 200\right)$$
+- **Valid GitHub Commits (Max 100 pts):** Target: 1,000 valid commits (0.1 pts/commit)
+  $$\text{Commits Pts} = \min\left(100, \frac{\text{valid\_github\_commits}}{1000} \times 100\right)$$
+- **Public Repositories (Max 150 pts):** Target: 30 repositories (5.0 pts/repo)
+  $$\text{Repos Pts} = \min\left(150, \frac{\text{github\_repos}}{30} \times 150\right)$$
 - **Pull Requests (Max 175 pts):** Target: 20 PRs (heavily incentivizes collaboration over solo commits)
   $$\text{PRs Pts} = \min\left(175, \frac{\text{github\_prs}}{20} \times 175\right)$$
 - **GitHub Issues (Max 75 pts):** Target: 25 issues
   $$\text{Issues Pts} = \min\left(75, \frac{\text{github\_issues}}{25} \times 75\right)$$
-- **Public Repositories (Max 50 pts):** Target: 20 repositories
-  $$\text{Repos Pts} = \min\left(50, \frac{\text{github\_repos}}{20} \times 50\right)$$
 
 ---
 

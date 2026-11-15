@@ -55,10 +55,10 @@ Stores rolling 365-day aggregated daily contributions for the entire community. 
     *   Problem Volume (Max 150): LeetCode weighted (1x/3x/6x), Codeforces (target 250), GFG/CodeChef/HackerRank combined.
     *   Contests Attended (Max 100): Target 50 contests.
 *   **Development Score (Max 500 Pts):**
-    *   Commits (Max 200): Target 1,000 valid commits.
+    *   Commits (Max 100): Target 1,000 valid commits (0.1 pts/commit).
     *   Pull Requests (Max 175): Target 20 PRs (heavy collaborative incentive).
     *   Issues (Max 75): Target 25 issues.
-    *   Repositories (Max 50): Target 20 repositories.
+    *   Repositories (Max 150): Target 30 repositories (5.0 pts/repo).
 *   **Consistency Bonus (Max 200 Pts):**
     *   Active Days (Max 100): Target 150 days.
     *   Max Streak (Max 100): Target 30-day streak.
