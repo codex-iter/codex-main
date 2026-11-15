@@ -14,7 +14,8 @@ async def make_cf_request(session: aiohttp.ClientSession, url: str, max_retries:
     """
     for attempt in range(1, max_retries + 1):
         async with cf_semaphore:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            # 25s timeout to support accounts with heavy submission history
+            timeout = aiohttp.ClientTimeout(total=25)
             try:
                 async with session.get(url, headers=BROWSER_HEADERS, timeout=timeout) as resp:
                     if resp.status in (429, 503):
@@ -60,7 +61,9 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
     }
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     
     info_data, status_data, rating_data = await asyncio.gather(
         make_cf_request(session, f"https://codeforces.com/api/user.info?handles={encoded_handle}"),
@@ -82,7 +85,13 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
         for sub in status_data.get("result", []):
             if sub.get("verdict") == "OK":
                 prob = sub.get("problem", {})
-                solved.add((prob.get("contestId"), prob.get("index")))
+                cid = prob.get("contestId")
+                idx = prob.get("index")
+                name = prob.get("name")
+                if cid is not None and idx:
+                    solved.add((cid, idx))
+                elif name:
+                    solved.add((cid or "cf", name))
 
     # 3. Contest history -> count attended
     cf_contests = 0

@@ -159,3 +159,87 @@ class SnapshotSafetyTests(unittest.IsolatedAsyncioTestCase):
         # Streak should increment from 5 to 6 instead of collapsing to 1
         self.assertEqual(result["current_streak"], 6)
         self.assertEqual(result["max_streak"], 6)
+
+    async def test_preserves_leetcode_contest_metrics_when_contest_endpoint_fails(self):
+        previous = {
+            "snapshot_date": "2026-11-14",
+            "leetcode_total": 200,
+            "leetcode_easy": 100,
+            "leetcode_medium": 80,
+            "leetcode_hard": 20,
+            "leetcode_rating": 1850,
+            "leetcode_max_rating": 1900,
+            "leetcode_contests": 15,
+        }
+        member = {"id": "member-lc", "full_name": "LC Knight", "leetcode_handle": "knight123"}
+        lc_partial = {
+            "leetcode_total": 201,
+            "leetcode_easy": 100,
+            "leetcode_medium": 81,
+            "leetcode_hard": 20,
+            "leetcode_rating": 0,
+            "leetcode_max_rating": 0,
+            "lc_contests_attended": 0,
+            "_summary_ok": True,
+            "_contest_ok": False,
+            "_badges_ok": True,
+            "_fetch_ok": True,
+        }
+        with patch.object(main, "fetch_leetcode", new=AsyncMock(return_value=lc_partial)), patch.object(db, "get_recent_snapshots", return_value=[previous]):
+            result = await main.sync_member_async(object(), object(), member, "2026-11-15")
+
+        self.assertEqual(result["leetcode_total"], 201)
+        self.assertEqual(result["leetcode_rating"], 1850)
+        self.assertEqual(result["leetcode_max_rating"], 1900)
+        self.assertEqual(result["leetcode_contests"], 15)
+
+    async def test_streak_persists_when_rolling_github_contributions_drop(self):
+        # 1-year rolling calendar dropped past contributions from 500 to 495, but member solved 1 new question
+        previous = {
+            "snapshot_date": "2026-11-14",
+            "current_streak": 10,
+            "max_streak": 10,
+            "valid_github_commits": 50,
+            "raw_github_commits": 500,
+            "github_contributions": 500,
+            "leetcode_total": 100,
+        }
+        member = {"id": "member-rolling", "full_name": "Rolling Hero", "leetcode_handle": "hero"}
+        lc_data = {
+            "leetcode_total": 101,  # Solved 1 problem today
+            "leetcode_easy": 101,
+            "leetcode_medium": 0,
+            "leetcode_hard": 0,
+            "_summary_ok": True,
+            "_contest_ok": True,
+            "_badges_ok": True,
+            "_fetch_ok": True,
+        }
+        # GitHub contributions rolled off from 500 to 495
+        gh_data = {
+            "github_contributions": 495,
+            "github_repos": 5,
+            "github_prs": 0,
+            "github_issues": 0,
+            "_gql_ok": True,
+            "_prs_ok": True,
+            "_issues_ok": True,
+            "_fetch_ok": True,
+        }
+        with patch.object(main, "fetch_leetcode", new=AsyncMock(return_value=lc_data)), \
+             patch.object(main, "fetch_github", new=AsyncMock(return_value=gh_data)), \
+             patch.object(db, "get_recent_snapshots", return_value=[previous]):
+            result = await main.sync_member_async(object(), object(), member, "2026-11-15")
+
+        # Streak should increment from 10 to 11 because valid_github_commits + leetcode_total advanced
+        self.assertEqual(result["current_streak"], 11)
+
+    def test_clean_handle_normalizes_urls_and_symbols(self):
+        from fetchers import clean_handle
+        self.assertEqual(clean_handle("https://leetcode.com/u/john_doe/"), "john_doe")
+        self.assertEqual(clean_handle("https://github.com/octocat/"), "octocat")
+        self.assertEqual(clean_handle("  @tourist  "), "tourist")
+        self.assertEqual(clean_handle("https://codeforces.com/profile/petr"), "petr")
+        self.assertEqual(clean_handle("https://www.codechef.com/users/chef_123"), "chef_123")
+        self.assertEqual(clean_handle(""), "")
+        self.assertEqual(clean_handle(None), "")

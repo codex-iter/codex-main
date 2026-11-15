@@ -18,8 +18,8 @@ def _profile_metrics(html: str) -> dict:
         return _safe_int(match.group(1).replace(",", "")) if match else 0
 
     return {
-        "codechef_rating": number(r'id="rating-block-all".*?class="rating-number">\s*(\d+)'),
-        "codechef_max_rating": number(r'id="rating-block-all".*?Highest Rating\s+([\d,]+)'),
+        "codechef_rating": number(r'(?:id="rating-block-all"|class="rating-header").*?class="rating-number">\s*(\d+)'),
+        "codechef_max_rating": number(r'(?:id="rating-block-all"|class="rating-header").*?Highest Rating\s+([\d,]+)'),
         "codechef_solved": number(r'Total Problems Solved:\s*([\d,]+)'),
         "cc_contests_attended": number(r'No\. of Contests Participated:\s*<b>(\d+)</b>'),
     }
@@ -27,7 +27,9 @@ def _profile_metrics(html: str) -> dict:
 
 async def fetch_codechef(session: aiohttp.ClientSession, handle: str) -> dict:
     """Fetch leaderboard metrics from CodeChef's public profile page."""
-    url = f"https://www.codechef.com/users/{urllib.parse.quote(handle, safe='')}"
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    url = f"https://www.codechef.com/users/{urllib.parse.quote(clean_h, safe='')}"
     timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
 
     failed_result = {**_profile_metrics(""), "_fetch_ok": False}
@@ -45,9 +47,21 @@ async def fetch_codechef(session: aiohttp.ClientSession, handle: str) -> dict:
                             continue
                         response.raise_for_status()
                         html = await response.text()
-                        if "Total Problems Solved:" not in html:
-                            log.warning("    CodeChef profile had no leaderboard metrics for %s", handle)
+
+                        # Detect Cloudflare bot challenge or non-profile pages
+                        is_challenge = any(term in html.lower() for term in ("cloudflare", "just a moment...", "challenge-platform"))
+                        is_valid_profile = not is_challenge and (
+                            "Total Problems Solved:" in html
+                            or "user-details" in html
+                            or "user-header" in html
+                            or "side-nav" in html
+                            or f"users/{clean_h}" in html.lower()
+                        )
+
+                        if not is_valid_profile:
+                            log.warning("    CodeChef profile invalid or challenged for %s", clean_h)
                             return failed_result
+
                         metrics = {**_profile_metrics(html), "_fetch_ok": True}
                         log.info("    ✓ CodeChef     -> rating=%d solved=%d", metrics["codechef_rating"], metrics["codechef_solved"])
                         return metrics

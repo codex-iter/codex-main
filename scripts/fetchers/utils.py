@@ -96,3 +96,24 @@ def _safe_float(value, default: float = 0.0) -> float:
         return float(value) if value is not None else default
     except (TypeError, ValueError):
         return default
+
+def clean_handle(handle: str | None) -> str:
+    """Normalize member handles by removing URLs, leading/trailing whitespace, and leading @ symbols."""
+    if not handle:
+        return ""
+    h = str(handle).strip()
+    if h.startswith("http://") or h.startswith("https://"):
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(h)
+            path_parts = [p for p in parsed.path.strip("/").split("/") if p]
+            if path_parts:
+                if path_parts[0] in ("u", "user", "users", "profile") and len(path_parts) > 1:
+                    h = path_parts[1]
+                else:
+                    h = path_parts[0]
+        except Exception:
+            pass
+    import re
+    h = re.sub(r"^[@/]+|[/]+$", "", h).strip()
+    return h

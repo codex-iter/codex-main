@@ -15,7 +15,9 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
     }
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     BASE = "https://leetcode-api-pied.vercel.app"
 
     query = """
@@ -34,7 +36,7 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
             summary, contest_data, badges_resp = await asyncio.gather(
                 safe_fetch(session, f"{BASE}/user/{encoded_handle}"),
                 safe_fetch(session, f"{BASE}/user/{encoded_handle}/contests"),
-                safe_fetch(session, "https://leetcode.com/graphql", method="POST", json_body={"query": query, "variables": {"username": handle}})
+                safe_fetch(session, "https://leetcode.com/graphql", method="POST", json_body={"query": query, "variables": {"username": clean_h}})
             )
         finally:
             await asyncio.sleep(1.0)
@@ -96,6 +98,20 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
     except Exception as exc:
         log.warning("    LeetCode badges unavailable for %s: %s", handle, exc)
 
+    summary_ok = bool(summary and isinstance(summary, dict) and summary.get("submitStats"))
+    contest_ok = bool(
+        contest_data
+        and isinstance(contest_data, dict)
+        and not contest_data.get("error")
+        and not contest_data.get("message")
+        and ("userContestRanking" in contest_data or "userContestRankingHistory" in contest_data)
+    )
+    badges_ok = bool(
+        badges_resp
+        and isinstance(badges_resp, dict)
+        and badges_resp.get("data", {}).get("matchedUser") is not None
+    )
+
     result = {
         "leetcode_easy": easy,
         "leetcode_medium": medium,
@@ -107,7 +123,10 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
         "lc_badge_name": lc_badge,
         "_lc_summary": summary,   # kept for topic aggregation in build_topic_stats
         "_lc_badges_list": lc_badges_list,
-        "_fetch_ok": bool(summary or contest_data or badges_resp),
+        "_summary_ok": summary_ok,
+        "_contest_ok": contest_ok,
+        "_badges_ok": badges_ok,
+        "_fetch_ok": summary_ok or contest_ok or badges_ok,
     }
     log.info("    ✓ LeetCode     -> easy=%d med=%d hard=%d total=%d contests=%d",
              easy, medium, hard, total, lc_contests)

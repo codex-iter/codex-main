@@ -504,8 +504,9 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
             const c = cVal || 0;
             const delta = Math.max(0, c - p);
             
-            // Backfill detection: If it jumps from 0 to a large number in one day, it's a scraper handle addition/fix
-            if (p === 0 && delta > 10) return 0;
+            // Backfill protection: If jumping from 0 to a large number in one day (e.g. adding an existing handle),
+            // cap initial daily surge to 10 rather than completely zeroing genuine first-day progress.
+            if (p === 0 && delta > 10) return 10;
             
             // Hard cap for daily spam or extreme glitches
             if (delta > 30) return 30;
@@ -548,8 +549,16 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
       });
     }
 
-    // Sort descending by monthly_total_score
-    return results.sort((a, b) => b.monthly_total_score - a.monthly_total_score);
+    // Sort descending by monthly_total_score, with tie-breaking on monthly_dsa_score then current_streak
+    return results.sort((a, b) => {
+      if (b.monthly_total_score !== a.monthly_total_score) {
+        return b.monthly_total_score - a.monthly_total_score;
+      }
+      if (b.monthly_dsa_score !== a.monthly_dsa_score) {
+        return b.monthly_dsa_score - a.monthly_dsa_score;
+      }
+      return (b.current_streak || 0) - (a.current_streak || 0);
+    });
   } catch (err) {
     console.error("[codexApi] getMonthlyLeaderboard unexpected error:", err);
     return [];

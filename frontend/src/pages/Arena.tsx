@@ -63,13 +63,23 @@ export default function Arena() {
 
   const dsaSorted = useMemo(() => {
     return [...data]
-      .sort((a, b) => (b.monthly_dsa_score || 0) - (a.monthly_dsa_score || 0))
+      .sort((a, b) => {
+        if ((b.monthly_dsa_score || 0) !== (a.monthly_dsa_score || 0)) {
+          return (b.monthly_dsa_score || 0) - (a.monthly_dsa_score || 0);
+        }
+        return (b.current_streak || 0) - (a.current_streak || 0);
+      })
       .map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [data]);
 
   const devSorted = useMemo(() => {
     return [...data]
-      .sort((a, b) => (b.monthly_dev_score || 0) - (a.monthly_dev_score || 0))
+      .sort((a, b) => {
+        if ((b.monthly_dev_score || 0) !== (a.monthly_dev_score || 0)) {
+          return (b.monthly_dev_score || 0) - (a.monthly_dev_score || 0);
+        }
+        return (b.current_streak || 0) - (a.current_streak || 0);
+      })
       .map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [data]);
 

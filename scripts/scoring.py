@@ -37,15 +37,25 @@ def calculate_score(snapshot: dict) -> dict:
     cf_solved_pts = min(50.0, (cf_solved / 250.0) * 50.0)
 
     # GFG/CodeChef/HackerRank (Max 25 pts) - Target: 300 combined
-    gfg_weight = (
-        (snapshot.get("gfg_school") or 0) * 0.0 +
-        (snapshot.get("gfg_basic") or 0) * 0.5 +
-        (snapshot.get("gfg_easy") or 0) * 1.0 +
-        (snapshot.get("gfg_medium") or 0) * 3.0 +
-        (snapshot.get("gfg_hard") or 0) * 6.0
+    # Weighted by difficulty: School (0.15) < Basic (0.5) < Easy (1.0) < Medium (3.0) < Hard (6.0)
+    gfg_breakdown_sum = (
+        (snapshot.get("gfg_school") or 0) +
+        (snapshot.get("gfg_basic") or 0) +
+        (snapshot.get("gfg_easy") or 0) +
+        (snapshot.get("gfg_medium") or 0) +
+        (snapshot.get("gfg_hard") or 0)
     )
-    if gfg_weight == 0 and (snapshot.get("gfg_solved") or 0) > 0:
+    if gfg_breakdown_sum == 0 and (snapshot.get("gfg_solved") or 0) > 0:
+        # Fallback when difficulty breakdown is unavailable from the scraper
         gfg_weight = (snapshot.get("gfg_solved") or 0) * 1.5
+    else:
+        gfg_weight = (
+            (snapshot.get("gfg_school") or 0) * 0.15 +
+            (snapshot.get("gfg_basic") or 0) * 0.5 +
+            (snapshot.get("gfg_easy") or 0) * 1.0 +
+            (snapshot.get("gfg_medium") or 0) * 3.0 +
+            (snapshot.get("gfg_hard") or 0) * 6.0
+        )
 
     cc_solved = (snapshot.get("codechef_solved") or 0) * 2.0
     hr_badges = snapshot.get("hackerrank_badges") or 0

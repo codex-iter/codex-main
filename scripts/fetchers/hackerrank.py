@@ -19,7 +19,9 @@ async def fetch_hackerrank(session: aiohttp.ClientSession, handle: str) -> dict:
     }
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     BASE = f"https://hackerrank-stats.tashif.codes/{encoded_handle}"
 
     async with hr_semaphore:
@@ -55,11 +57,19 @@ async def fetch_hackerrank(session: aiohttp.ClientSession, handle: str) -> dict:
     except Exception as exc:
         log.warning("    HackerRank topics unavailable for %s: %s", handle, exc)
 
+    is_valid = bool(
+        badges_payload
+        and isinstance(badges_payload, dict)
+        and not badges_payload.get("error")
+        and not badges_payload.get("message")
+        and ("data" in badges_payload or "badges" in badges_payload)
+    )
+
     result = {
         "hackerrank_badges": hr_badge_count,
         "hr_badges_list": hr_badges_list,
         "hr_topics": hr_topics,
-        "_fetch_ok": bool(badges_payload or stats_resp),
+        "_fetch_ok": is_valid,
     }
     log.info("    ✓ HackerRank   -> badges=%d", hr_badge_count)
     return result

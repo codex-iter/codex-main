@@ -13,7 +13,9 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
     ...
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     BASE = f"https://gfg-stats.tashif.codes/{encoded_handle}"
 
     async with gfg_semaphore:
@@ -54,6 +56,13 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
     # Use totalSolved as score
     score = solved
 
+    is_valid = bool(
+        summary_payload
+        and isinstance(summary_payload, dict)
+        and not summary_payload.get("error")
+        and ("data" in summary_payload or "totalSolved" in summary_payload or "totalProblemsSolved" in summary_payload)
+    )
+
     result = {
         "gfg_solved": solved,
         "gfg_score": score,
@@ -64,7 +73,7 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
         "gfg_hard": gfg_hard,
         "gfg_max_rating": _gfg_max_rating,
         "gfg_topics": gfg_topics,
-        "_fetch_ok": bool(summary_payload or stats_resp or rating_resp),
+        "_fetch_ok": is_valid,
     }
     log.info("    ✓ GFG          -> solved=%d [S=%d B=%d E=%d M=%d H=%d]",
              solved, gfg_school, gfg_basic, gfg_easy, gfg_medium, gfg_hard)

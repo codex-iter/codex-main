@@ -38,6 +38,7 @@ INTER_CHUNK_SLEEP = 3            # seconds to sleep between member chunks
 # ---------------------------------------------------------------------------
 
 def sanitize_topic_map(topics: dict) -> dict:
+    from fetchers.utils import _safe_int
     sanitized = {}
     ignore_pattern = re.compile(r"start\d+|_adm$|admin|cakewalk|simple", re.IGNORECASE)
     
@@ -51,7 +52,7 @@ def sanitize_topic_map(topics: dict) -> dict:
         if ignore_pattern.search(k):
             continue
         clean_k = aliases.get(k.lower(), k.replace("-", " ").title())
-        sanitized[clean_k] = sanitized.get(clean_k, 0) + v
+        sanitized[clean_k] = sanitized.get(clean_k, 0) + _safe_int(v)
         
     return sanitized
 
@@ -91,13 +92,16 @@ def build_badges_detail(lc_badges_list: list, lc_badge_name: str, hr_badges_list
 # ---------------------------------------------------------------------------
 
 def calculate_total_activity(snapshot: dict) -> int:
+    commits = snapshot.get("valid_github_commits")
+    if commits is None or commits == 0:
+        commits = snapshot.get("github_contributions", 0)
     return (
         snapshot.get("leetcode_total", 0) +
         snapshot.get("codeforces_solved", 0) +
         snapshot.get("codechef_solved", 0) +
         snapshot.get("gfg_solved", 0) +
         snapshot.get("hackerrank_badges", 0) +
-        snapshot.get("github_contributions", 0) +
+        commits +
         snapshot.get("github_prs", 0) +
         snapshot.get("github_issues", 0)
     )
@@ -125,12 +129,14 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
         "topic_stats": {}, "badges_detail": [],
     }
 
-    gh_handle  = member.get("github_handle")
-    cf_handle  = member.get("codeforces_handle")
-    lc_handle  = member.get("leetcode_handle")
-    cc_handle  = member.get("codechef_handle")
-    gfg_handle = member.get("gfg_handle")
-    hr_handle  = member.get("hackerrank_handle")
+    from fetchers import clean_handle
+
+    gh_handle  = clean_handle(member.get("github_handle"))
+    cf_handle  = clean_handle(member.get("codeforces_handle"))
+    lc_handle  = clean_handle(member.get("leetcode_handle"))
+    cc_handle  = clean_handle(member.get("codechef_handle"))
+    gfg_handle = clean_handle(member.get("gfg_handle"))
+    hr_handle  = clean_handle(member.get("hackerrank_handle"))
 
     async def _noop() -> dict: return {}
 
@@ -231,33 +237,41 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     if lc_handle and lc_data:
         lc_total = lc_data.get("leetcode_total", 0)
-        if yesterday_snap and (not lc_data.get("_fetch_ok") or lc_total < yesterday_snap.get("leetcode_total", 0)):
+        lc_rating = lc_data.get("leetcode_rating", 0)
+        lc_max_rating = lc_data.get("leetcode_max_rating", 0)
+        lc_contests = lc_data.get("lc_contests_attended", 0)
+
+        # Solved problems protection
+        if yesterday_snap and (not lc_data.get("_summary_ok", lc_data.get("_fetch_ok")) or lc_total < yesterday_snap.get("leetcode_total", 0)):
             snapshot.update({
                 "leetcode_easy": yesterday_snap.get("leetcode_easy", 0),
                 "leetcode_medium": yesterday_snap.get("leetcode_medium", 0),
                 "leetcode_hard": yesterday_snap.get("leetcode_hard", 0),
                 "leetcode_total": yesterday_snap.get("leetcode_total", 0),
-                "leetcode_rating": yesterday_snap.get("leetcode_rating", 0),
-                "leetcode_max_rating": yesterday_snap.get("leetcode_max_rating", 0),
-                "leetcode_contests": yesterday_snap.get("leetcode_contests", 0)
             })
-            _lc_contests = yesterday_snap.get("leetcode_contests", 0)
-            # Topic stats and badges will reset to empty for this snapshot unless we do a deep merge, 
-            # but primary metrics are saved.
         else:
             snapshot.update({
                 "leetcode_easy": lc_data.get("leetcode_easy", 0),
                 "leetcode_medium": lc_data.get("leetcode_medium", 0),
                 "leetcode_hard": lc_data.get("leetcode_hard", 0),
                 "leetcode_total": lc_total,
-                "leetcode_rating": lc_data.get("leetcode_rating", 0),
-                "leetcode_max_rating": lc_data.get("leetcode_max_rating", 0),
-                "leetcode_contests": lc_data.get("lc_contests_attended", 0)
             })
-            _lc_contests = lc_data.get("lc_contests_attended", 0)
-            _lc_badge_name = lc_data.get("lc_badge_name", "")
-            _lc_badges_list = lc_data.get("_lc_badges_list", [])
             _lc_summary = lc_data.get("_lc_summary", {})
+
+        # Contest rating & attendance protection
+        if yesterday_snap and (not lc_data.get("_contest_ok", lc_data.get("_fetch_ok")) or (lc_rating == 0 and yesterday_snap.get("leetcode_rating", 0) > 0)):
+            snapshot["leetcode_rating"] = yesterday_snap.get("leetcode_rating", 0)
+            snapshot["leetcode_max_rating"] = yesterday_snap.get("leetcode_max_rating", 0)
+            snapshot["leetcode_contests"] = yesterday_snap.get("leetcode_contests", 0)
+            _lc_contests = yesterday_snap.get("leetcode_contests", 0)
+        else:
+            snapshot["leetcode_rating"] = lc_rating
+            snapshot["leetcode_max_rating"] = lc_max_rating
+            snapshot["leetcode_contests"] = lc_contests
+            _lc_contests = lc_contests
+
+        _lc_badge_name = lc_data.get("lc_badge_name", "")
+        _lc_badges_list = lc_data.get("_lc_badges_list", [])
 
     if cc_handle and cc_data:
         cc_solved = cc_data.get("codechef_solved", 0)
