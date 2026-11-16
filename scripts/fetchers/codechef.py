@@ -15,12 +15,14 @@ def _profile_metrics(html: str) -> dict:
     """Extract the public CodeChef profile metrics used by the leaderboard."""
     def number(pattern: str) -> int:
         match = re.search(pattern, html, re.DOTALL)
-        return _safe_int(match.group(1).replace(",", "")) if match else 0
+        if match and match.lastindex and match.group(1):
+            return _safe_int(match.group(1).replace(",", ""))
+        return 0
 
     return {
         "codechef_rating": number(r'(?:id="rating-block-all"|class="rating-header").*?class="rating-number">\s*(\d+)'),
         "codechef_max_rating": number(r'(?:id="rating-block-all"|class="rating-header").*?Highest Rating\s+([\d,]+)'),
-        "codechef_solved": number(r'Total Problems Solved:\s*([\d,]+)'),
+        "codechef_solved": number(r'Total Problems Solved:(?:\s*([\d,]+))?'),
         "cc_contests_attended": number(r'No\. of Contests Participated:\s*<b>(\d+)</b>'),
     }
 
@@ -49,13 +51,24 @@ async def fetch_codechef(session: aiohttp.ClientSession, handle: str) -> dict:
                         html = await response.text()
 
                         # Detect Cloudflare bot challenge or non-profile pages
-                        is_challenge = any(term in html.lower() for term in ("cloudflare", "just a moment...", "challenge-platform"))
-                        is_valid_profile = not is_challenge and (
-                            "Total Problems Solved:" in html
-                            or "user-details" in html
-                            or "user-header" in html
-                            or "side-nav" in html
-                            or f"users/{clean_h}" in html.lower()
+                        is_challenge = bool(
+                            re.search(r"<title>\s*(just a moment\.\.\.|attention required!\s*\|\s*cloudflare)\s*</title>", html, re.IGNORECASE)
+                            or 'id="cf-challenge-running"' in html
+                            or 'class="cf-browser-verification"' in html
+                            or 'id="challenge-form"' in html
+                        )
+                        is_redirected_to_home = str(response.url).rstrip('/') in ("https://www.codechef.com", "http://www.codechef.com")
+                        is_valid_profile = (
+                            not is_challenge
+                            and not is_redirected_to_home
+                            and (
+                                "Total Problems Solved:" in html
+                                or "user-details" in html
+                                or "user-header" in html
+                                or "rating-header" in html
+                                or "rating-block-all" in html
+                                or f"/users/{clean_h.lower()}" in html.lower()
+                            )
                         )
 
                         if not is_valid_profile:

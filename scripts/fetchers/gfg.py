@@ -15,6 +15,22 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
     import urllib.parse
     from .utils import clean_handle
     clean_h = clean_handle(handle)
+
+    if not clean_h or " " in clean_h:
+        log.warning("    Invalid GFG handle '%s' (handles cannot contain spaces)", handle)
+        return {
+            "gfg_solved": 0,
+            "gfg_score": 0,
+            "gfg_school": 0,
+            "gfg_basic": 0,
+            "gfg_easy": 0,
+            "gfg_medium": 0,
+            "gfg_hard": 0,
+            "gfg_max_rating": 0,
+            "gfg_topics": {},
+            "_fetch_ok": False,
+        }
+
     encoded_handle = urllib.parse.quote(clean_h)
     BASE = f"https://gfg-stats.tashif.codes/{encoded_handle}"
 

@@ -76,7 +76,10 @@ async def safe_fetch(
             log.warning("    TIMEOUT fetching %s", url)
             return {}
         except aiohttp.ClientResponseError as exc:
-            log.warning("    HTTP %s fetching %s — %s", exc.status, url, exc.message)
+            if exc.status == 404:
+                log.info("    HTTP 404 (Not Found) fetching %s", url)
+            else:
+                log.warning("    HTTP %s fetching %s — %s", exc.status, url, exc.message)
             return {}
         except Exception as exc:  # noqa: BLE001
             log.warning("    ERROR fetching %s — %s", url, exc)
