@@ -1,0 +1,76 @@
+.holo-card {
+  --hc-w: 320px;
+  --hc-ratio: 0.64;
+  --hc-radius: 16px;
+
+  position: relative;
+  display: inline-block;
+  width: var(--hc-w);
+  max-width: 100%;
+  aspect-ratio: var(--hc-ratio, 0.64);
+  border-radius: var(--hc-radius);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+
+.holo-card__shadow {
+  position: absolute;
+  inset: 6% 5% -5%;
+  border-radius: var(--hc-radius);
+  background: rgba(0, 0, 0, 0.45);
+  filter: blur(24px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.holo-card__rotor {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.holo-card__face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--hc-radius);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: #0f172a;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.5);
+}
+
+.holo-card__face img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.holo-card__content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.875rem;
+  z-index: 2;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.holo-card__content a,
+.holo-card__content button {
+  pointer-events: auto;
+}
