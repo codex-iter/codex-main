@@ -5,6 +5,7 @@ export interface HoloCardProps {
   image?: string;
   fallbackImage?: string;
   alt?: string;
+  aspectRatio?: number;
   width?: number | string;
   radius?: number;
   tiltMax?: number;
@@ -32,6 +33,7 @@ export default function HoloCard({
   image,
   fallbackImage,
   alt = '',
+  aspectRatio,
   width = 320,
   radius = 16,
   tiltMax = 14,
@@ -46,7 +48,7 @@ export default function HoloCard({
   const shadowRef = useRef<HTMLSpanElement>(null);
 
   const [imgSrc, setImgSrc] = useState<string | undefined>(image || fallbackImage);
-  const [ratio, setRatio] = useState<number>(1);
+  const [ratio, setRatio] = useState<number>(aspectRatio || 0.64);
 
   const pointerRef = useRef({ x: 0.5, y: 0.5, inside: false });
   const wakeRef = useRef<(() => void) | null>(null);
@@ -55,9 +57,15 @@ export default function HoloCard({
     setImgSrc(image || fallbackImage);
   }, [image, fallbackImage]);
 
-  // Automatically adjust aspect ratio to fit the picture
   useEffect(() => {
-    if (!imgSrc) return;
+    if (aspectRatio) {
+      setRatio(aspectRatio);
+    }
+  }, [aspectRatio]);
+
+  // Adjust aspect ratio to fit image only when no explicit aspectRatio is set
+  useEffect(() => {
+    if (aspectRatio || !imgSrc) return;
     let active = true;
     const img = new Image();
     img.onload = () => {
@@ -70,13 +78,16 @@ export default function HoloCard({
       if (!active) return;
       if (fallbackImage && imgSrc !== fallbackImage) {
         setImgSrc(fallbackImage);
+      } else {
+        const seed = encodeURIComponent(alt || 'codex');
+        setImgSrc(`https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0f172a&textColor=ffffff`);
       }
     };
     img.src = imgSrc;
     return () => {
       active = false;
     };
-  }, [imgSrc, fallbackImage]);
+  }, [imgSrc, fallbackImage, aspectRatio, alt]);
 
   // 3D Perspective tilt & hover physics
   useEffect(() => {
@@ -225,6 +236,9 @@ export default function HoloCard({
               onError={() => {
                 if (fallbackImage && imgSrc !== fallbackImage) {
                   setImgSrc(fallbackImage);
+                } else {
+                  const seed = encodeURIComponent(alt || 'codex');
+                  setImgSrc(`https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0f172a&textColor=ffffff`);
                 }
               }}
             />

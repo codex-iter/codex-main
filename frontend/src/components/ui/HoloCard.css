@@ -1,13 +1,13 @@
 .holo-card {
   --hc-w: 320px;
-  --hc-ratio: 1;
+  --hc-ratio: 0.64;
   --hc-radius: 16px;
 
   position: relative;
   display: inline-block;
   width: var(--hc-w);
   max-width: 100%;
-  aspect-ratio: var(--hc-ratio, 1);
+  aspect-ratio: var(--hc-ratio, 0.64);
   border-radius: var(--hc-radius);
   outline: none;
   user-select: none;

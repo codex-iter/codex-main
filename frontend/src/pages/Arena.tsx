@@ -150,6 +150,8 @@ export default function Arena() {
   };
 
   // Helper to reliably get competitor avatar with GitHub profile picture fallback
+  const PODIUM_CARD_RATIO = 0.64;
+
   const getCompetitorAvatars = (m?: { avatar_url?: string | null; handle?: string | null; full_name?: string | null } | null) => {
     if (!m) return { image: "/codex_dark.png", fallback: "/codex_dark.png" };
     const cleanHandle = m.handle ? m.handle.replace(/^@/, "").trim() : "";
@@ -548,6 +550,7 @@ export default function Arena() {
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Algorithms Rank 2`}
+                              aspectRatio={PODIUM_CARD_RATIO}
                               width={310}
                               className="w-full max-w-[310px]"
                             >
@@ -616,6 +619,7 @@ export default function Arena() {
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Algorithms Rank 1`}
+                              aspectRatio={PODIUM_CARD_RATIO}
                               width={335}
                               className="w-full max-w-[335px]"
                             >
@@ -682,6 +686,7 @@ export default function Arena() {
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Algorithms Rank 3`}
+                              aspectRatio={PODIUM_CARD_RATIO}
                               width={310}
                               className="w-full max-w-[310px]"
                             >
@@ -984,6 +989,7 @@ export default function Arena() {
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Development Rank 2`}
+                              aspectRatio={PODIUM_CARD_RATIO}
                               width={310}
                               className="w-full max-w-[310px]"
                             >
@@ -1052,6 +1058,7 @@ export default function Arena() {
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Development Rank 1`}
+                              aspectRatio={PODIUM_CARD_RATIO}
                               width={335}
                               className="w-full max-w-[335px]"
                             >
@@ -1070,7 +1077,7 @@ export default function Arena() {
                               <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3 space-y-1.5 shadow-2xl">
                                 <div className="flex items-center justify-between border-b border-amber-400/20 pb-1.5">
                                   <div className="min-w-0">
-                                    <div className="font-mono font-black text-base sm:text-lg text-white uppercase truncate drop-shadow flex items-center gap-1.5">
+                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow flex items-center gap-1.5">
                                       <span>👑</span>
                                       <span className="truncate">{m.full_name}</span>
                                     </div>
@@ -1118,6 +1125,7 @@ export default function Arena() {
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Development Rank 3`}
+                              aspectRatio={PODIUM_CARD_RATIO}
                               width={310}
                               className="w-full max-w-[310px]"
                             >
