@@ -149,14 +149,19 @@ export default function Arena() {
     return null;
   };
 
-  // Helper to reliably get competitor avatar for HoloCard
-  const getMemberAvatar = (m?: { avatar_url?: string | null; handle?: string | null; full_name?: string | null } | null): string => {
-    if (!m) return "/codex_card_back.png";
-    if (m.avatar_url && m.avatar_url.trim()) return m.avatar_url.trim();
+  // Helper to reliably get competitor avatar with GitHub profile picture fallback
+  const getCompetitorAvatars = (m?: { avatar_url?: string | null; handle?: string | null; full_name?: string | null } | null) => {
+    if (!m) return { image: "/codex_dark.png", fallback: "/codex_dark.png" };
     const cleanHandle = m.handle ? m.handle.replace(/^@/, "").trim() : "";
-    if (cleanHandle) return `https://github.com/${cleanHandle}.png`;
+    const githubUrl = cleanHandle ? `https://github.com/${cleanHandle}.png` : undefined;
     const seed = encodeURIComponent(m.full_name || cleanHandle || "warrior");
-    return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0f172a&textColor=ffffff`;
+    const dicebearUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0f172a&textColor=ffffff`;
+
+    const userPhoto = (m.avatar_url && m.avatar_url.trim()) ? m.avatar_url.trim() : undefined;
+    const image = userPhoto || githubUrl || dicebearUrl;
+    const fallback = githubUrl || dicebearUrl;
+
+    return { image, fallback };
   };
 
   return (
@@ -536,36 +541,31 @@ export default function Arena() {
                         if (!m) return null;
                         const streak = getStreakBadge(m.current_streak || 0);
                         const gapToFirst = Math.ceil((dsaSorted[0]?.monthly_dsa_score || 0) - (m.monthly_dsa_score || 0));
+                        const avatars = getCompetitorAvatars(m);
                         return (
                           <div className="order-2 md:order-1 flex justify-center w-full">
                             <HoloCard
-                              image={getMemberAvatar(m)}
+                              image={avatars.image}
+                              fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Algorithms Rank 2`}
-                              preset="shards"
-                              foilColor="#e2e8f0"
-                              intensity={0.88}
-                              scale={1.05}
-                              edgeSparkle={0.85}
-                              glare={0.55}
                               width={310}
-                              radius={16}
-                              className="w-full max-w-[310px] filter drop-shadow-xl"
+                              className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
                               <div className="flex items-center justify-between">
                                 <span className="bg-slate-200 text-slate-950 font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-slate-400">
                                   🥈 RANK #2
                                 </span>
-                                <span className="bg-black/60 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
                                   RUNNER UP
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 space-y-2.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                                   <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow">
+                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
                                     <div className="font-mono text-xs text-slate-400 font-bold truncate">
@@ -581,20 +581,20 @@ export default function Arena() {
 
                                 <div className="flex items-baseline justify-between">
                                   <span className="font-mono text-[10px] font-black text-slate-400 uppercase tracking-wider">DSA XP</span>
-                                  <span className="font-mono text-2xl font-black text-slate-100">{Math.floor(m.monthly_dsa_score || 0)}</span>
+                                  <span className="font-mono text-xl font-black text-slate-100">{Math.floor(m.monthly_dsa_score || 0)}</span>
                                 </div>
                                 <div className="text-[10px] font-mono text-slate-300 flex justify-between">
                                   <span>SOLVED: <strong className="text-white font-bold">{m.monthly_problems_solved || 0}</strong></span>
                                   <span>LC:{m.monthly_leetcode || 0} • CF:{m.monthly_codeforces || 0}</span>
                                 </div>
                                 {gapToFirst > 0 && (
-                                  <div className="bg-slate-900/90 border border-slate-700 p-1 text-center font-mono text-[10px] font-bold text-slate-300 rounded">
+                                  <div className="bg-slate-900/90 border border-slate-700 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-slate-300 rounded">
                                     ▲ +{gapToFirst} XP TO DETHRONE #1
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-xs py-2 uppercase rounded border border-white/20 transition-all hover:scale-[1.02]"
+                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
                                   VIEW DOSSIER ↗
                                 </Link>
@@ -609,20 +609,15 @@ export default function Arena() {
                         const m = dsaSorted[0];
                         if (!m) return null;
                         const streak = getStreakBadge(m.current_streak || 0);
+                        const avatars = getCompetitorAvatars(m);
                         return (
                           <div className="order-1 md:order-2 flex justify-center w-full md:-translate-y-4">
                             <HoloCard
-                              image={getMemberAvatar(m)}
+                              image={avatars.image}
+                              fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Algorithms Rank 1`}
-                              preset="gold"
-                              foilColor="#facc15"
-                              intensity={0.92}
-                              scale={1.2}
-                              edgeSparkle={1.0}
-                              glare={0.7}
                               width={335}
-                              radius={18}
-                              className="w-full max-w-[335px] filter drop-shadow-2xl"
+                              className="w-full max-w-[335px]"
                             >
                               {/* Top Bar */}
                               <div className="flex items-center justify-between">
@@ -636,10 +631,10 @@ export default function Arena() {
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3.5 space-y-2.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-2">
+                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3 space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-1.5">
                                   <div className="min-w-0">
-                                    <div className="font-mono font-black text-base sm:text-lg text-white uppercase truncate drop-shadow flex items-center gap-1.5">
+                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow flex items-center gap-1.5">
                                       <span>👑</span>
                                       <span className="truncate">{m.full_name}</span>
                                     </div>
@@ -656,7 +651,7 @@ export default function Arena() {
 
                                 <div className="flex items-baseline justify-between">
                                   <span className="font-mono text-[10px] font-black text-amber-300 uppercase tracking-wider">APEX DSA XP</span>
-                                  <span className="font-mono text-3xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dsa_score || 0)}</span>
+                                  <span className="font-mono text-2xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dsa_score || 0)}</span>
                                 </div>
                                 <div className="text-[10px] font-mono text-slate-300 flex justify-between">
                                   <span>SOLVED: <strong className="text-amber-300 font-bold">{m.monthly_problems_solved || 0}</strong></span>
@@ -664,7 +659,7 @@ export default function Arena() {
                                 </div>
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-xs py-2.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.02]"
+                                  className="mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-[11px] py-1.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.01]"
                                 >
                                   INSPECT CHAMPION ↗
                                 </Link>
@@ -680,36 +675,31 @@ export default function Arena() {
                         if (!m) return null;
                         const streak = getStreakBadge(m.current_streak || 0);
                         const gapToSecond = Math.ceil((dsaSorted[1]?.monthly_dsa_score || 0) - (m.monthly_dsa_score || 0));
+                        const avatars = getCompetitorAvatars(m);
                         return (
                           <div className="order-3 md:order-3 flex justify-center w-full">
                             <HoloCard
-                              image={getMemberAvatar(m)}
+                              image={avatars.image}
+                              fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Algorithms Rank 3`}
-                              preset="glitter"
-                              foilColor="#f59e0b"
-                              intensity={0.88}
-                              scale={1.05}
-                              edgeSparkle={0.85}
-                              glare={0.55}
                               width={310}
-                              radius={16}
-                              className="w-full max-w-[310px] filter drop-shadow-xl"
+                              className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
                               <div className="flex items-center justify-between">
                                 <span className="bg-amber-600 text-white font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-amber-500">
                                   🥉 RANK #3
                                 </span>
-                                <span className="bg-black/60 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
                                   PODIUM
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-xl p-3 space-y-2.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-950 pb-2">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-950 pb-1.5">
                                   <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow">
+                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
                                     <div className="font-mono text-xs text-amber-200/90 font-bold truncate">
@@ -725,20 +715,20 @@ export default function Arena() {
 
                                 <div className="flex items-baseline justify-between">
                                   <span className="font-mono text-[10px] font-black text-amber-200/70 uppercase tracking-wider">DSA XP</span>
-                                  <span className="font-mono text-2xl font-black text-amber-400">{Math.floor(m.monthly_dsa_score || 0)}</span>
+                                  <span className="font-mono text-xl font-black text-amber-400">{Math.floor(m.monthly_dsa_score || 0)}</span>
                                 </div>
                                 <div className="text-[10px] font-mono text-slate-300 flex justify-between">
                                   <span>SOLVED: <strong className="text-white font-bold">{m.monthly_problems_solved || 0}</strong></span>
                                   <span>LC:{m.monthly_leetcode || 0} • CF:{m.monthly_codeforces || 0}</span>
                                 </div>
                                 {gapToSecond > 0 && (
-                                  <div className="bg-amber-950/60 border border-amber-800/60 p-1 text-center font-mono text-[10px] font-bold text-amber-300 rounded">
+                                  <div className="bg-amber-950/60 border border-amber-800/60 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-amber-300 rounded">
                                     ▲ +{gapToSecond} XP TO OVERTAKE #2
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-xs py-2 uppercase rounded border border-white/20 transition-all hover:scale-[1.02]"
+                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
                                   VIEW DOSSIER ↗
                                 </Link>
@@ -987,36 +977,31 @@ export default function Arena() {
                         if (!m) return null;
                         const streak = getStreakBadge(m.current_streak || 0);
                         const gapToFirst = Math.ceil((devSorted[0]?.monthly_dev_score || 0) - (m.monthly_dev_score || 0));
+                        const avatars = getCompetitorAvatars(m);
                         return (
                           <div className="order-2 md:order-1 flex justify-center w-full">
                             <HoloCard
-                              image={getMemberAvatar(m)}
+                              image={avatars.image}
+                              fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Development Rank 2`}
-                              preset="shards"
-                              foilColor="#e2e8f0"
-                              intensity={0.88}
-                              scale={1.05}
-                              edgeSparkle={0.85}
-                              glare={0.55}
                               width={310}
-                              radius={16}
-                              className="w-full max-w-[310px] filter drop-shadow-xl"
+                              className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
                               <div className="flex items-center justify-between">
                                 <span className="bg-slate-200 text-slate-950 font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-slate-400">
                                   🥈 RANK #2
                                 </span>
-                                <span className="bg-black/60 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
                                   RUNNER UP
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-3 space-y-2.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
                                   <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow">
+                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
                                     <div className="font-mono text-xs text-slate-400 font-bold truncate">
@@ -1032,20 +1017,20 @@ export default function Arena() {
 
                                 <div className="flex items-baseline justify-between">
                                   <span className="font-mono text-[10px] font-black text-slate-400 uppercase tracking-wider">DEV XP</span>
-                                  <span className="font-mono text-2xl font-black text-slate-100">{Math.floor(m.monthly_dev_score || 0)}</span>
+                                  <span className="font-mono text-xl font-black text-slate-100">{Math.floor(m.monthly_dev_score || 0)}</span>
                                 </div>
                                 <div className="text-[10px] font-mono text-slate-300 flex justify-between">
                                   <span>COMMITS: <strong className="text-white font-bold">{m.monthly_commits || 0}</strong></span>
                                   <span>PRS: <strong className="text-white font-bold">{m.monthly_prs || 0}</strong></span>
                                 </div>
                                 {gapToFirst > 0 && (
-                                  <div className="bg-slate-900/90 border border-slate-700 p-1 text-center font-mono text-[10px] font-bold text-slate-300 rounded">
+                                  <div className="bg-slate-900/90 border border-slate-700 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-slate-300 rounded">
                                     ▲ +{gapToFirst} XP TO DETHRONE #1
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-xs py-2 uppercase rounded border border-white/20 transition-all hover:scale-[1.02]"
+                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
                                   VIEW DOSSIER ↗
                                 </Link>
@@ -1060,20 +1045,15 @@ export default function Arena() {
                         const m = devSorted[0];
                         if (!m) return null;
                         const streak = getStreakBadge(m.current_streak || 0);
+                        const avatars = getCompetitorAvatars(m);
                         return (
                           <div className="order-1 md:order-2 flex justify-center w-full md:-translate-y-4">
                             <HoloCard
-                              image={getMemberAvatar(m)}
+                              image={avatars.image}
+                              fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Development Rank 1`}
-                              preset="gold"
-                              foilColor="#facc15"
-                              intensity={0.92}
-                              scale={1.2}
-                              edgeSparkle={1.0}
-                              glare={0.7}
                               width={335}
-                              radius={18}
-                              className="w-full max-w-[335px] filter drop-shadow-2xl"
+                              className="w-full max-w-[335px]"
                             >
                               {/* Top Bar */}
                               <div className="flex items-center justify-between">
@@ -1087,8 +1067,8 @@ export default function Arena() {
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3.5 space-y-2.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-2">
+                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3 space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-1.5">
                                   <div className="min-w-0">
                                     <div className="font-mono font-black text-base sm:text-lg text-white uppercase truncate drop-shadow flex items-center gap-1.5">
                                       <span>👑</span>
@@ -1107,7 +1087,7 @@ export default function Arena() {
 
                                 <div className="flex items-baseline justify-between">
                                   <span className="font-mono text-[10px] font-black text-amber-300 uppercase tracking-wider">APEX DEV XP</span>
-                                  <span className="font-mono text-3xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dev_score || 0)}</span>
+                                  <span className="font-mono text-2xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dev_score || 0)}</span>
                                 </div>
                                 <div className="text-[10px] font-mono text-slate-300 flex justify-between">
                                   <span>COMMITS: <strong className="text-amber-300 font-bold">{m.monthly_commits || 0}</strong></span>
@@ -1115,7 +1095,7 @@ export default function Arena() {
                                 </div>
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-xs py-2.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.02]"
+                                  className="mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-[11px] py-1.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.01]"
                                 >
                                   INSPECT CHAMPION ↗
                                 </Link>
@@ -1131,36 +1111,31 @@ export default function Arena() {
                         if (!m) return null;
                         const streak = getStreakBadge(m.current_streak || 0);
                         const gapToSecond = Math.ceil((devSorted[1]?.monthly_dev_score || 0) - (m.monthly_dev_score || 0));
+                        const avatars = getCompetitorAvatars(m);
                         return (
                           <div className="order-3 md:order-3 flex justify-center w-full">
                             <HoloCard
-                              image={getMemberAvatar(m)}
+                              image={avatars.image}
+                              fallbackImage={avatars.fallback}
                               alt={`${m.full_name} - Development Rank 3`}
-                              preset="glitter"
-                              foilColor="#f59e0b"
-                              intensity={0.88}
-                              scale={1.05}
-                              edgeSparkle={0.85}
-                              glare={0.55}
                               width={310}
-                              radius={16}
-                              className="w-full max-w-[310px] filter drop-shadow-xl"
+                              className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
                               <div className="flex items-center justify-between">
                                 <span className="bg-amber-600 text-white font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-amber-500">
                                   🥉 RANK #3
                                 </span>
-                                <span className="bg-black/60 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
                                   PODIUM
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-xl p-3 space-y-2.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-950 pb-2">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-950 pb-1.5">
                                   <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow">
+                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
                                     <div className="font-mono text-xs text-amber-200/90 font-bold truncate">
@@ -1176,20 +1151,20 @@ export default function Arena() {
 
                                 <div className="flex items-baseline justify-between">
                                   <span className="font-mono text-[10px] font-black text-amber-200/70 uppercase tracking-wider">DEV XP</span>
-                                  <span className="font-mono text-2xl font-black text-amber-400">{Math.floor(m.monthly_dev_score || 0)}</span>
+                                  <span className="font-mono text-xl font-black text-amber-400">{Math.floor(m.monthly_dev_score || 0)}</span>
                                 </div>
                                 <div className="text-[10px] font-mono text-slate-300 flex justify-between">
                                   <span>COMMITS: <strong className="text-white font-bold">{m.monthly_commits || 0}</strong></span>
                                   <span>PRS: <strong className="text-white font-bold">{m.monthly_prs || 0}</strong></span>
                                 </div>
                                 {gapToSecond > 0 && (
-                                  <div className="bg-amber-950/60 border border-amber-800/60 p-1 text-center font-mono text-[10px] font-bold text-amber-300 rounded">
+                                  <div className="bg-amber-950/60 border border-amber-800/60 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-amber-300 rounded">
                                     ▲ +{gapToSecond} XP TO OVERTAKE #2
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-xs py-2 uppercase rounded border border-white/20 transition-all hover:scale-[1.02]"
+                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
                                   VIEW DOSSIER ↗
                                 </Link>
