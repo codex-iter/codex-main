@@ -9,21 +9,15 @@ lc_semaphore = asyncio.Semaphore(2)
 
 async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
     """
-    Fetches LeetCode metrics across three endpoints concurrently:
-      1. GET /{handle}/solved  -> { total_solved }
-      2. GET /{handle}         -> { submitStats.acSubmissionNum[{difficulty, count}] }
-      3. GET /{handle}/contests -> {
-             userContestRanking: { attendedContestsCount, rating, badge.name },
-             userContestRankingHistory: [{ rating }]
-           }
-
     Returns: {
       leetcode_easy, leetcode_medium, leetcode_hard, leetcode_total,
       leetcode_rating, leetcode_max_rating, lc_contests_attended, lc_badge_name, _lc_summary, _lc_badges_list
     }
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     BASE = "https://leetcode-api-pied.vercel.app"
 
     query = """
@@ -39,20 +33,16 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
 
     async with lc_semaphore:
         try:
-            solved_data, summary, contest_data, badges_resp = await asyncio.gather(
-                safe_fetch(session, f"{BASE}/user/{encoded_handle}/solved"),
+            summary, contest_data, badges_resp = await asyncio.gather(
                 safe_fetch(session, f"{BASE}/user/{encoded_handle}"),
                 safe_fetch(session, f"{BASE}/user/{encoded_handle}/contests"),
-                safe_fetch(session, "https://leetcode.com/graphql", method="POST", json_body={"query": query, "variables": {"username": handle}})
+                safe_fetch(session, "https://leetcode.com/graphql", method="POST", json_body={"query": query, "variables": {"username": clean_h}})
             )
         finally:
             await asyncio.sleep(1.0)
 
-    # 1. Total solved
-    total = _safe_int(solved_data.get("total_solved"))
-
-    # 2. Per-difficulty breakdown
-    easy = medium = hard = 0
+    # 1. Per-difficulty breakdown and Total Solved
+    total = easy = medium = hard = 0
     try:
         ac_list = (
             summary.get("submitStats", {})
@@ -67,6 +57,8 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
                 medium = count
             elif diff == "hard":
                 hard = count
+            elif diff == "all":
+                total = count
         if easy + medium + hard > total:
             total = easy + medium + hard
     except Exception as exc:
@@ -106,6 +98,20 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
     except Exception as exc:
         log.warning("    LeetCode badges unavailable for %s: %s", handle, exc)
 
+    summary_ok = bool(summary and isinstance(summary, dict) and summary.get("submitStats"))
+    contest_ok = bool(
+        contest_data
+        and isinstance(contest_data, dict)
+        and not contest_data.get("error")
+        and not contest_data.get("message")
+        and ("userContestRanking" in contest_data or "userContestRankingHistory" in contest_data)
+    )
+    badges_ok = bool(
+        badges_resp
+        and isinstance(badges_resp, dict)
+        and badges_resp.get("data", {}).get("matchedUser") is not None
+    )
+
     result = {
         "leetcode_easy": easy,
         "leetcode_medium": medium,
@@ -117,6 +123,10 @@ async def fetch_leetcode(session: aiohttp.ClientSession, handle: str) -> dict:
         "lc_badge_name": lc_badge,
         "_lc_summary": summary,   # kept for topic aggregation in build_topic_stats
         "_lc_badges_list": lc_badges_list,
+        "_summary_ok": summary_ok,
+        "_contest_ok": contest_ok,
+        "_badges_ok": badges_ok,
+        "_fetch_ok": summary_ok or contest_ok or badges_ok,
     }
     log.info("    ✓ LeetCode     -> easy=%d med=%d hard=%d total=%d contests=%d",
              easy, medium, hard, total, lc_contests)

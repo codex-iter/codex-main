@@ -13,14 +13,31 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
     ...
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+
+    if not clean_h or " " in clean_h:
+        log.warning("    Invalid GFG handle '%s' (handles cannot contain spaces)", handle)
+        return {
+            "gfg_solved": 0,
+            "gfg_score": 0,
+            "gfg_school": 0,
+            "gfg_basic": 0,
+            "gfg_easy": 0,
+            "gfg_medium": 0,
+            "gfg_hard": 0,
+            "gfg_max_rating": 0,
+            "gfg_topics": {},
+            "_fetch_ok": False,
+        }
+
+    encoded_handle = urllib.parse.quote(clean_h)
     BASE = f"https://gfg-stats.tashif.codes/{encoded_handle}"
 
     async with gfg_semaphore:
         try:
-            summary_payload, heatmap_resp, stats_resp, rating_resp = await asyncio.gather(
+            summary_payload, stats_resp, rating_resp = await asyncio.gather(
                 safe_fetch(session, BASE),
-                safe_fetch(session, f"{BASE}/heatmap"),
                 safe_fetch(session, f"{BASE}/stats"),
                 safe_fetch(session, f"{BASE}/rating"),
             )
@@ -34,14 +51,7 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
         or summary_payload.get("totalProblemsSolved")
     )
 
-    # 2. Heatmap -> streak & submission counts
-    heatmap = heatmap_resp.get("data") or {}
-    gfg_total_subs = _safe_int(heatmap.get("totalSubmissions"))
-    gfg_current_streak = _safe_int(heatmap.get("currentStreak"))
-    gfg_max_streak = _safe_int(heatmap.get("longestStreak"))
-    gfg_active_days = _safe_int(heatmap.get("totalActiveDays"))
-
-    # 3. Difficulty breakdown + topics
+    # 2. Difficulty breakdown + topics
     stats_data = stats_resp.get("data") or {}
     by_diff = stats_data.get("byDifficulty") or {}
     gfg_school = _safe_int(by_diff.get("school"))
@@ -55,12 +65,19 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
         if item.get("topic")
     }
 
-    # 4. Rating (may be null for non-contest users)
+    # 3. Rating (may be null for non-contest users)
     rating_data = rating_resp.get("data") or {}
     _gfg_max_rating = _safe_int(rating_data.get("max"))
 
     # Use totalSolved as score
     score = solved
+
+    is_valid = bool(
+        summary_payload
+        and isinstance(summary_payload, dict)
+        and not summary_payload.get("error")
+        and ("data" in summary_payload or "totalSolved" in summary_payload or "totalProblemsSolved" in summary_payload)
+    )
 
     result = {
         "gfg_solved": solved,
@@ -70,13 +87,10 @@ async def fetch_gfg(session: aiohttp.ClientSession, handle: str) -> dict:
         "gfg_easy": gfg_easy,
         "gfg_medium": gfg_medium,
         "gfg_hard": gfg_hard,
-        "gfg_active_days": gfg_active_days,
-        "gfg_total_submissions": gfg_total_subs,
-        "gfg_current_streak": gfg_current_streak,
-        "gfg_max_streak": gfg_max_streak,
         "gfg_max_rating": _gfg_max_rating,
         "gfg_topics": gfg_topics,
+        "_fetch_ok": is_valid,
     }
-    log.info("    ✓ GFG          -> solved=%d streak=%d [S=%d B=%d E=%d M=%d H=%d]",
-             solved, gfg_current_streak, gfg_school, gfg_basic, gfg_easy, gfg_medium, gfg_hard)
+    log.info("    ✓ GFG          -> solved=%d [S=%d B=%d E=%d M=%d H=%d]",
+             solved, gfg_school, gfg_basic, gfg_easy, gfg_medium, gfg_hard)
     return result

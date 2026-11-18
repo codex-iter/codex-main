@@ -14,7 +14,6 @@ from fetchers import (
     fetch_codechef,
     fetch_gfg,
     fetch_hackerrank,
-    fetch_tuf,
 )
 from fetchers.utils import REQUEST_TIMEOUT
 
@@ -39,6 +38,7 @@ INTER_CHUNK_SLEEP = 3            # seconds to sleep between member chunks
 # ---------------------------------------------------------------------------
 
 def sanitize_topic_map(topics: dict) -> dict:
+    from fetchers.utils import _safe_int
     sanitized = {}
     ignore_pattern = re.compile(r"start\d+|_adm$|admin|cakewalk|simple", re.IGNORECASE)
     
@@ -52,7 +52,7 @@ def sanitize_topic_map(topics: dict) -> dict:
         if ignore_pattern.search(k):
             continue
         clean_k = aliases.get(k.lower(), k.replace("-", " ").title())
-        sanitized[clean_k] = sanitized.get(clean_k, 0) + v
+        sanitized[clean_k] = sanitized.get(clean_k, 0) + _safe_int(v)
         
     return sanitized
 
@@ -92,14 +92,16 @@ def build_badges_detail(lc_badges_list: list, lc_badge_name: str, hr_badges_list
 # ---------------------------------------------------------------------------
 
 def calculate_total_activity(snapshot: dict) -> int:
+    commits = snapshot.get("valid_github_commits")
+    if commits is None or commits == 0:
+        commits = snapshot.get("github_contributions", 0)
     return (
         snapshot.get("leetcode_total", 0) +
         snapshot.get("codeforces_solved", 0) +
         snapshot.get("codechef_solved", 0) +
         snapshot.get("gfg_solved", 0) +
-        snapshot.get("tuf_solved", 0) +
         snapshot.get("hackerrank_badges", 0) +
-        snapshot.get("github_contributions", 0) +
+        commits +
         snapshot.get("github_prs", 0) +
         snapshot.get("github_issues", 0)
     )
@@ -127,24 +129,24 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
         "topic_stats": {}, "badges_detail": [],
     }
 
-    gh_handle  = member.get("github_handle")
-    cf_handle  = member.get("codeforces_handle")
-    lc_handle  = member.get("leetcode_handle")
-    cc_handle  = member.get("codechef_handle")
-    gfg_handle = member.get("gfg_handle")
-    hr_handle  = member.get("hackerrank_handle")
-    tuf_handle = member.get("tuf_handle")
+    from fetchers import clean_handle
+
+    gh_handle  = clean_handle(member.get("github_handle"))
+    cf_handle  = clean_handle(member.get("codeforces_handle"))
+    lc_handle  = clean_handle(member.get("leetcode_handle"))
+    cc_handle  = clean_handle(member.get("codechef_handle"))
+    gfg_handle = clean_handle(member.get("gfg_handle"))
+    hr_handle  = clean_handle(member.get("hackerrank_handle"))
 
     async def _noop() -> dict: return {}
 
-    gh_data, cf_data, lc_data, cc_data, gfg_data, hr_data, tuf_data = await asyncio.gather(
+    gh_data, cf_data, lc_data, cc_data, gfg_data, hr_data = await asyncio.gather(
         fetch_github(session, gh_handle) if gh_handle else _noop(),
         fetch_codeforces(session, cf_handle) if cf_handle else _noop(),
         fetch_leetcode(session, lc_handle) if lc_handle else _noop(),
         fetch_codechef(session, cc_handle) if cc_handle else _noop(),
         fetch_gfg(session, gfg_handle) if gfg_handle else _noop(),
         fetch_hackerrank(session, hr_handle) if hr_handle else _noop(),
-        fetch_tuf(session, tuf_handle) if tuf_handle else _noop(),
         return_exceptions=False,
     )
 
@@ -162,77 +164,118 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
     yesterday_snap = recent_snapshots[0] if len(recent_snapshots) > 0 else None
     day_before_snap = recent_snapshots[1] if len(recent_snapshots) > 1 else None
 
+    if not yesterday_snap:
+        failed_platforms = [
+            platform
+            for platform, handle, data in (
+                ("GitHub", gh_handle, gh_data), ("Codeforces", cf_handle, cf_data),
+                ("LeetCode", lc_handle, lc_data), ("CodeChef", cc_handle, cc_data),
+                ("GFG", gfg_handle, gfg_data), ("HackerRank", hr_handle, hr_data),
+            )
+            if handle and not data.get("_fetch_ok")
+        ]
+        if failed_platforms:
+            log.warning("  ⏭ Skipping initial snapshot for %s; unavailable: %s", name, ", ".join(failed_platforms))
+            return {"_skip_sync": True}
+
     if gh_handle and gh_data:
         gh_commits = gh_data.get("github_contributions", 0)
-        if yesterday_snap and gh_commits < yesterday_snap.get("raw_github_commits", 0):
-            snapshot.update({
-                "github_contributions": yesterday_snap.get("raw_github_commits", 0),
-                "github_repos": yesterday_snap.get("github_repos", 0),
-                "github_prs": yesterday_snap.get("github_prs", 0),
-                "github_issues": yesterday_snap.get("github_issues", 0),
-            })
+        gh_repos = gh_data.get("github_repos", 0)
+        gh_prs = gh_data.get("github_prs", 0)
+        gh_issues = gh_data.get("github_issues", 0)
+
+        # Commits & Repos from GraphQL
+        if yesterday_snap and (not gh_data.get("_gql_ok", gh_data.get("_fetch_ok")) or gh_commits < yesterday_snap.get("raw_github_commits", 0)):
+            snapshot["github_contributions"] = yesterday_snap.get("raw_github_commits", 0)
+            snapshot["github_repos"] = yesterday_snap.get("github_repos", 0)
         else:
-            snapshot.update({
-                "github_contributions": gh_commits,
-                "github_repos": gh_data.get("github_repos", 0),
-                "github_prs": gh_data.get("github_prs", 0),
-                "github_issues": gh_data.get("github_issues", 0),
-            })
+            snapshot["github_contributions"] = gh_commits
+            snapshot["github_repos"] = gh_repos
+
+        # PRs protected independently against Search API secondary rate limit
+        if yesterday_snap and (not gh_data.get("_prs_ok", True) or gh_prs < yesterday_snap.get("github_prs", 0)):
+            snapshot["github_prs"] = yesterday_snap.get("github_prs", 0)
+        else:
+            snapshot["github_prs"] = gh_prs
+
+        # Issues protected independently against Search API secondary rate limit
+        if yesterday_snap and (not gh_data.get("_issues_ok", True) or gh_issues < yesterday_snap.get("github_issues", 0)):
+            snapshot["github_issues"] = yesterday_snap.get("github_issues", 0)
+        else:
+            snapshot["github_issues"] = gh_issues
 
     if cf_handle and cf_data:
         cf_solved = cf_data.get("codeforces_solved", 0)
-        if yesterday_snap and cf_solved < yesterday_snap.get("codeforces_solved", 0):
-            snapshot.update({
-                "codeforces_rating": yesterday_snap.get("codeforces_rating", 0),
-                "codeforces_max_rating": yesterday_snap.get("codeforces_max_rating", 0),
-                "codeforces_rank_title": yesterday_snap.get("codeforces_rank_title", "Unrated"),
-                "codeforces_solved": yesterday_snap.get("codeforces_solved", 0),
-                "codeforces_contests": yesterday_snap.get("codeforces_contests", 0)
-            })
+        cf_rating = cf_data.get("codeforces_rating", 0)
+        cf_max_rating = cf_data.get("codeforces_max_rating", 0)
+        cf_rank = cf_data.get("codeforces_rank_title", "Unrated")
+        cf_contests = cf_data.get("cf_contests_attended", 0)
+
+        # Solved problems protection
+        if yesterday_snap and (not cf_data.get("_status_ok", cf_data.get("_fetch_ok")) or cf_solved < yesterday_snap.get("codeforces_solved", 0)):
+            snapshot["codeforces_solved"] = yesterday_snap.get("codeforces_solved", 0)
+        else:
+            snapshot["codeforces_solved"] = cf_solved
+
+        # Rating & rank protection: do not wipe rating if user.info failed or returned 0 while yesterday had rating
+        if yesterday_snap and (not cf_data.get("_info_ok", cf_data.get("_fetch_ok")) or (cf_rating == 0 and yesterday_snap.get("codeforces_rating", 0) > 0)):
+            snapshot["codeforces_rating"] = yesterday_snap.get("codeforces_rating", 0)
+            snapshot["codeforces_max_rating"] = yesterday_snap.get("codeforces_max_rating", 0)
+            snapshot["codeforces_rank_title"] = yesterday_snap.get("codeforces_rank_title", "Unrated")
+        else:
+            snapshot["codeforces_rating"] = cf_rating
+            snapshot["codeforces_max_rating"] = cf_max_rating
+            snapshot["codeforces_rank_title"] = cf_rank
+
+        # Contest count protection
+        if yesterday_snap and (not cf_data.get("_rating_ok", cf_data.get("_fetch_ok")) or cf_contests < yesterday_snap.get("codeforces_contests", 0)):
+            snapshot["codeforces_contests"] = yesterday_snap.get("codeforces_contests", 0)
             _cf_contests = yesterday_snap.get("codeforces_contests", 0)
         else:
-            snapshot.update({
-                "codeforces_rating": cf_data.get("codeforces_rating", 0),
-                "codeforces_max_rating": cf_data.get("codeforces_max_rating", 0),
-                "codeforces_rank_title": cf_data.get("codeforces_rank_title", "Unrated"),
-                "codeforces_solved": cf_solved,
-                "codeforces_contests": cf_data.get("cf_contests_attended", 0)
-            })
-            _cf_contests = cf_data.get("cf_contests_attended", 0)
+            snapshot["codeforces_contests"] = cf_contests
+            _cf_contests = cf_contests
 
     if lc_handle and lc_data:
         lc_total = lc_data.get("leetcode_total", 0)
-        if yesterday_snap and lc_total < yesterday_snap.get("leetcode_total", 0):
+        lc_rating = lc_data.get("leetcode_rating", 0)
+        lc_max_rating = lc_data.get("leetcode_max_rating", 0)
+        lc_contests = lc_data.get("lc_contests_attended", 0)
+
+        # Solved problems protection
+        if yesterday_snap and (not lc_data.get("_summary_ok", lc_data.get("_fetch_ok")) or lc_total < yesterday_snap.get("leetcode_total", 0)):
             snapshot.update({
                 "leetcode_easy": yesterday_snap.get("leetcode_easy", 0),
                 "leetcode_medium": yesterday_snap.get("leetcode_medium", 0),
                 "leetcode_hard": yesterday_snap.get("leetcode_hard", 0),
                 "leetcode_total": yesterday_snap.get("leetcode_total", 0),
-                "leetcode_rating": yesterday_snap.get("leetcode_rating", 0),
-                "leetcode_max_rating": yesterday_snap.get("leetcode_max_rating", 0),
-                "leetcode_contests": yesterday_snap.get("leetcode_contests", 0)
             })
-            _lc_contests = yesterday_snap.get("leetcode_contests", 0)
-            # Topic stats and badges will reset to empty for this snapshot unless we do a deep merge, 
-            # but primary metrics are saved.
         else:
             snapshot.update({
                 "leetcode_easy": lc_data.get("leetcode_easy", 0),
                 "leetcode_medium": lc_data.get("leetcode_medium", 0),
                 "leetcode_hard": lc_data.get("leetcode_hard", 0),
                 "leetcode_total": lc_total,
-                "leetcode_rating": lc_data.get("leetcode_rating", 0),
-                "leetcode_max_rating": lc_data.get("leetcode_max_rating", 0),
-                "leetcode_contests": lc_data.get("lc_contests_attended", 0)
             })
-            _lc_contests = lc_data.get("lc_contests_attended", 0)
-            _lc_badge_name = lc_data.get("lc_badge_name", "")
-            _lc_badges_list = lc_data.get("_lc_badges_list", [])
             _lc_summary = lc_data.get("_lc_summary", {})
+
+        # Contest rating & attendance protection
+        if yesterday_snap and (not lc_data.get("_contest_ok", lc_data.get("_fetch_ok")) or (lc_rating == 0 and yesterday_snap.get("leetcode_rating", 0) > 0)):
+            snapshot["leetcode_rating"] = yesterday_snap.get("leetcode_rating", 0)
+            snapshot["leetcode_max_rating"] = yesterday_snap.get("leetcode_max_rating", 0)
+            snapshot["leetcode_contests"] = yesterday_snap.get("leetcode_contests", 0)
+            _lc_contests = yesterday_snap.get("leetcode_contests", 0)
+        else:
+            snapshot["leetcode_rating"] = lc_rating
+            snapshot["leetcode_max_rating"] = lc_max_rating
+            snapshot["leetcode_contests"] = lc_contests
+            _lc_contests = lc_contests
+
+        _lc_badge_name = lc_data.get("lc_badge_name", "")
+        _lc_badges_list = lc_data.get("_lc_badges_list", [])
 
     if cc_handle and cc_data:
         cc_solved = cc_data.get("codechef_solved", 0)
-        if yesterday_snap and cc_solved < yesterday_snap.get("codechef_solved", 0):
+        if yesterday_snap and (not cc_data.get("_fetch_ok") or cc_solved < yesterday_snap.get("codechef_solved", 0)):
             snapshot.update({
                 "codechef_rating": yesterday_snap.get("codechef_rating", 0),
                 "codechef_max_rating": yesterday_snap.get("codechef_max_rating", 0),
@@ -250,12 +293,10 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
             })
             _cc_topics = cc_data.get("cc_topics", {})
             _cc_contests = cc_data.get("cc_contests_attended", 0)
-            snapshot["active_days"] += cc_data.get("cc_active_days", 0)
-            snapshot["total_submissions"] += cc_data.get("cc_total_submissions", 0)
 
     if gfg_handle and gfg_data:
         gfg_solved = gfg_data.get("gfg_solved", 0)
-        if yesterday_snap and gfg_solved < yesterday_snap.get("gfg_solved", 0):
+        if yesterday_snap and (not gfg_data.get("_fetch_ok") or gfg_solved < yesterday_snap.get("gfg_solved", 0)):
             snapshot.update({
                 "gfg_solved": yesterday_snap.get("gfg_solved", 0),
                 "gfg_score": yesterday_snap.get("gfg_score", 0),
@@ -276,34 +317,15 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
                 "gfg_hard": gfg_data.get("gfg_hard", 0),
             })
             _gfg_topics = gfg_data.get("gfg_topics", {})
-            snapshot["active_days"] += gfg_data.get("gfg_active_days", 0)
-            snapshot["total_submissions"] += gfg_data.get("gfg_total_submissions", 0)
 
     if hr_handle and hr_data:
         hr_badges = hr_data.get("hackerrank_badges", 0)
-        if yesterday_snap and hr_badges < yesterday_snap.get("hackerrank_badges", 0):
+        if yesterday_snap and (not hr_data.get("_fetch_ok") or hr_badges < yesterday_snap.get("hackerrank_badges", 0)):
             snapshot["hackerrank_badges"] = yesterday_snap.get("hackerrank_badges", 0)
         else:
             snapshot["hackerrank_badges"] = hr_badges
             _hr_badges_list = hr_data.get("hr_badges_list", [])
             _hr_topics = hr_data.get("hr_topics", {})
-
-    if tuf_handle and tuf_data:
-        tuf_solved = tuf_data.get("tuf_solved", 0)
-        if yesterday_snap and tuf_solved < yesterday_snap.get("tuf_solved", 0):
-            snapshot.update({
-                "tuf_solved": yesterday_snap.get("tuf_solved", 0),
-                "tuf_easy": yesterday_snap.get("tuf_easy", 0),
-                "tuf_medium": yesterday_snap.get("tuf_medium", 0),
-                "tuf_hard": yesterday_snap.get("tuf_hard", 0),
-            })
-        else:
-            snapshot.update({
-                "tuf_solved": tuf_solved,
-                "tuf_easy": tuf_data.get("tuf_easy", 0),
-                "tuf_medium": tuf_data.get("tuf_medium", 0),
-                "tuf_hard": tuf_data.get("tuf_hard", 0),
-            })
 
     snapshot["contests_attended"] = _cf_contests + _lc_contests + _cc_contests
     
@@ -345,18 +367,27 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
     snapshot["raw_github_commits"] = today_raw
     snapshot["valid_github_commits"] = yesterday_valid + capped_daily_commits
 
-    if yesterday_snap and yesterday_snap.get("snapshot_date") == yesterday_str:
-        yesterday_total = calculate_total_activity(yesterday_snap)
+    days_since_snap = 999
+    if yesterday_snap and yesterday_snap.get("snapshot_date"):
+        try:
+            last_date = datetime.strptime(yesterday_snap["snapshot_date"], "%Y-%m-%d").date()
+            days_since_snap = (today_date - last_date).days
+        except Exception:
+            days_since_snap = 999
+
+    yesterday_total = calculate_total_activity(yesterday_snap) if yesterday_snap else 0
+    prev_max_streak = yesterday_snap.get("max_streak", 0) if yesterday_snap else 0
+    prev_total = yesterday_total
+
+    if days_since_snap == 1:
         day_before_total = calculate_total_activity(day_before_snap) if day_before_snap else 0
         coded_yesterday = yesterday_total > day_before_total
-        
         base_streak = yesterday_snap.get("current_streak", 0) if coded_yesterday else 0
-        prev_max_streak = yesterday_snap.get("max_streak", 0)
-        prev_total = yesterday_total
+    elif days_since_snap == 2:
+        # Grace window for a single missed sync day: maintain current streak baseline
+        base_streak = yesterday_snap.get("current_streak", 0)
     else:
         base_streak = 0
-        prev_max_streak = yesterday_snap.get("max_streak", 0) if yesterday_snap else 0
-        prev_total = calculate_total_activity(yesterday_snap) if yesterday_snap else 0
 
     current_total = calculate_total_activity(snapshot)
 
@@ -367,11 +398,23 @@ async def sync_member_async(supabase_client, session: aiohttp.ClientSession, mem
 
     snapshot["max_streak"] = max(prev_max_streak, snapshot["current_streak"])
 
+    # Active days progression: cumulative count of days where coding activity was recorded
+    if yesterday_snap:
+        prev_active_days = yesterday_snap.get("active_days", 0)
+        if current_total > prev_total:
+            snapshot["active_days"] = prev_active_days + 1
+        else:
+            snapshot["active_days"] = prev_active_days
+    else:
+        snapshot["active_days"] = 1 if current_total > 0 else 0
+
     scores = calculate_score(snapshot)
     snapshot["total_score"] = scores["total_score"]
     snapshot["dsa_score"] = scores["dsa_score"]
     snapshot["dev_score"] = scores["dev_score"]
     log.info("  ✓ %s — Total: %.2f (DSA: %.2f | Dev: %.2f)", name, snapshot["total_score"], snapshot["dsa_score"], snapshot["dev_score"])
+
+    snapshot["_is_new_member"] = (len(recent_snapshots) == 0)
 
     return snapshot
 
@@ -388,6 +431,7 @@ async def run_sync() -> None:
 
     supabase_client = get_supabase_client()
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    first_of_month = datetime.now(timezone.utc).replace(day=1).strftime("%Y-%m-%d")
 
     log.info("Fetching active members from Supabase...")
     members = get_active_members(supabase_client)
@@ -414,9 +458,22 @@ async def run_sync() -> None:
                     log.error("  ✗ Failed to sync %s: %s", name, result)
                     fail_count += 1
                     continue
+                if result.get("_skip_sync"):
+                    log.warning("  ⏭ Skipped %s; waiting for a complete initial fetch", name)
+                    fail_count += 1
+                    continue
                 try:
+                    is_new = result.pop("_is_new_member", False)
                     upsert_snapshot(supabase_client, result)
                     log.info("  ✓ Upserted snapshot for %s", name)
+                    
+                    if is_new and today != first_of_month:
+                        import copy
+                        baseline_copy = copy.deepcopy(result)
+                        baseline_copy["snapshot_date"] = first_of_month
+                        upsert_snapshot(supabase_client, baseline_copy)
+                        log.info("  ✓ Auto-seeded 1st-of-month baseline for new member %s", name)
+                        
                     success_count += 1
                 except Exception as exc:  # noqa: BLE001
                     log.error("  ✗ Supabase upsert failed for %s: %s", name, exc)
@@ -432,7 +489,10 @@ async def run_sync() -> None:
 
     try:
         log.info("Starting rolling GitHub contribution aggregate sync...")
-        subprocess.run(["python", "scripts/backfill_club_github.py"], check=True)
+        import sys
+        from pathlib import Path
+        backfill_script = str(Path(__file__).resolve().parent / "backfill_club_github.py")
+        subprocess.run([sys.executable, backfill_script], check=True)
         log.info("GitHub contribution sync finished successfully.")
     except Exception as exc:
         log.error("Failed to run GitHub sync hook: %s", exc)

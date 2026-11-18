@@ -50,23 +50,6 @@ export function DifficultyBreakdown({ stats, derived }: DifficultyBreakdownProps
               </div>
             </div>
           )}
-          {derived.tufTotal > 0 && (
-            <div>
-              <div className="flex items-center gap-3 mb-5 border-b-4 border-slate-900 pb-2">
-                <h3 className="text-2xl font-black uppercase tracking-tight text-slate-900">
-                  TUF
-                </h3>
-                <span className="text-sm font-black text-slate-400">
-                  {derived.tufTotal} solved
-                </span>
-              </div>
-              <div className="space-y-4">
-                <DiffBar label="EASY" value={stats.tuf_easy} total={derived.tufTotal} color="bg-[#00b8a3]" />
-                <DiffBar label="MEDIUM" value={stats.tuf_medium} total={derived.tufTotal} color="bg-[#ffc01e]" />
-                <DiffBar label="HARD" value={stats.tuf_hard} total={derived.tufTotal} color="bg-[#ef4743]" />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </StaggerItem>

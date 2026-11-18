@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import type { LeaderboardMember } from "../../hooks/useLeaderboard";
+import AvatarImage from "../ui/AvatarImage";
 
 const RANK_STYLES: Record<number, { bg: string; text: string; border: string }> = {
   1: { bg: "bg-yellow-400",  text: "text-slate-900", border: "border-yellow-500" },
@@ -31,12 +32,6 @@ export default function LeaderboardRow({
   rank: number;
 }) {
   const rs = rankStyle(rank);
-  const avatar =
-    member.avatar_url ??
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-      member.full_name ?? "?"
-    )}&backgroundColor=0707f2&textColor=ffffff`;
-
   const profileHref = member.handle
     ? `/profile/${member.handle}`
     : null;
@@ -55,16 +50,11 @@ export default function LeaderboardRow({
       </div>
 
       {/* Avatar */}
-      <div className="flex-shrink-0 w-12 h-12 border-4 border-slate-900 overflow-hidden bg-slate-200">
-        <img
-          src={avatar}
-          alt={`${member.handle} avatar`}
-          loading="lazy"
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(member.full_name ?? "?")}`;
-          }}
+      <div className="flex-shrink-0 w-12 h-12 border-4 border-slate-900 overflow-hidden bg-slate-200 flex items-center justify-center font-black text-lg">
+        <AvatarImage
+          url={member.avatar_url}
+          handle={member.handle}
+          name={member.full_name}
         />
       </div>
 
@@ -84,8 +74,7 @@ export default function LeaderboardRow({
       <div className="hidden sm:flex items-center gap-2 flex-wrap justify-end">
         <StatPill label="Score"    value={member.total_score.toFixed(0)} />
         <StatPill label="LC"       value={member.leetcode_total} />
-        {member.tuf_handle && <StatPill label="TUF" value={member.tuf_solved} />}
-        <StatPill label="Streak"   value={`${member.current_streak}d`} />
+        <StatPill label="Contribs" value={member.total_contributions} />
         <StatPill label="Contests" value={member.contests_attended} />
       </div>
 

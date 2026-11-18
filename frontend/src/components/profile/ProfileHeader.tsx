@@ -1,14 +1,6 @@
 import { StaggerItem } from "../animations/ScrollReveal";
 import type { MemberProfile } from "../../services/codexApi";
-
-function avatar(member: MemberProfile) {
-  return (
-    member.avatar_url ??
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-      member.full_name ?? "?"
-    )}&backgroundColor=0707f2&textColor=ffffff`
-  );
-}
+import AvatarImage from "../ui/AvatarImage";
 
 export function ProfileHeader({ profile }: { profile: MemberProfile }) {
   return (
@@ -42,16 +34,12 @@ export function ProfileHeader({ profile }: { profile: MemberProfile }) {
 
           {/* Profile Avatar Frame */}
           <div className="relative flex-shrink-0 z-10">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-slate-900 bg-slate-800 overflow-hidden brutalist-shadow-sm relative group">
-              <img
-                src={avatar(profile)}
-                alt={`${profile.full_name} avatar`}
-                loading="lazy"
+            <div className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-slate-900 bg-slate-800 overflow-hidden brutalist-shadow-sm relative group flex items-center justify-center font-black text-3xl sm:text-4xl text-white">
+              <AvatarImage
+                url={profile.avatar_url}
+                handle={profile.github_handle || undefined}
+                name={profile.full_name}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profile.full_name ?? "?")}`;
-                }}
               />
             </div>
             <div className="absolute -bottom-2 -right-2 bg-[#FACC15] text-slate-900 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000000]">

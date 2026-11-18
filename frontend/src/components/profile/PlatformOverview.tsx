@@ -55,15 +55,13 @@ export function PlatformOverview({ profile, stats }: PlatformOverviewProps) {
   const gfg = stats.gfg_solved || 0;
   const cf = stats.codeforces_solved || 0;
   const cc = stats.codechef_solved || 0;
-  const tuf = stats.tuf_solved || 0;
-  const totalVol = lc + gfg + cf + cc + tuf;
+  const totalVol = lc + gfg + cf + cc;
 
   const segments: PlatformSegment[] = [
     { key: "lc", label: "LeetCode", count: lc, color: "#facc15", hoverColor: "#fde047" },
     { key: "gfg", label: "GeeksForGeeks", count: gfg, color: "#22c55e", hoverColor: "#4ade80" },
     { key: "cf", label: "Codeforces", count: cf, color: "#ef4444", hoverColor: "#f87171" },
     { key: "cc", label: "CodeChef", count: cc, color: "#a855f7", hoverColor: "#c084fc" },
-    { key: "tuf", label: "takeUforward", count: tuf, color: "#0707f2", hoverColor: "#3b82f6" },
   ].filter((s) => s.count > 0);
 
   let currentAngle = 0;
@@ -231,14 +229,7 @@ export function PlatformOverview({ profile, stats }: PlatformOverviewProps) {
             </PlatformCard>
           )}
 
-          {(Boolean(profile.tuf_handle) || (stats.tuf_solved || 0) > 0) && (
-            <PlatformCard platform="takeUforward" href={profile.tuf_handle ? `https://takeuforward.org/profile/${profile.tuf_handle}` : null}>
-              <StatRow label="Total Solved" value={stats.tuf_solved || 0} />
-              <StatRow label="Easy" value={stats.tuf_easy || 0} />
-              <StatRow label="Medium" value={stats.tuf_medium || 0} />
-              <StatRow label="Hard" value={stats.tuf_hard || 0} />
-            </PlatformCard>
-          )}
+
         </div>
       </div>
     </StaggerItem>

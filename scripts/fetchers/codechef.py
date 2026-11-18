@@ -1,85 +1,87 @@
 import asyncio
 import logging
+import re
+import urllib.parse
+
 import aiohttp
-from .utils import safe_fetch, _safe_int
+
+from .utils import BROWSER_HEADERS, REQUEST_TIMEOUT, _safe_int, retry_delay
 
 log = logging.getLogger(__name__)
 
 cc_semaphore = asyncio.Semaphore(1)
 
-async def fetch_codechef(session: aiohttp.ClientSession, handle: str) -> dict:
-    """
-    Fetches CodeChef metrics across four endpoints concurrently. All data inside `data: {}`.
+def _profile_metrics(html: str) -> dict:
+    """Extract the public CodeChef profile metrics used by the leaderboard."""
+    def number(pattern: str) -> int:
+        match = re.search(pattern, html, re.DOTALL)
+        if match and match.lastindex and match.group(1):
+            return _safe_int(match.group(1).replace(",", ""))
+        return 0
 
-    1. GET /{handle}          -> data.{ currentRating, maxRating, totalSolved, totalActiveDays }
-    2. GET /{handle}/heatmap  -> data.{ totalSubmissions, currentStreak, longestStreak }
-    3. GET /{handle}/contests -> data.{ count (contests attended) }
-    4. GET /{handle}/stats    -> data.{ topicAnalysis: [{topic, count}] }
-
-    Returns: {
-      codechef_rating, codechef_max_rating, codechef_solved,
-      cc_active_days, cc_total_submissions, cc_current_streak, cc_max_streak,
-      cc_contests_attended, cc_topics
+    return {
+        "codechef_rating": number(r'(?:id="rating-block-all"|class="rating-header").*?class="rating-number">\s*(\d+)'),
+        "codechef_max_rating": number(r'(?:id="rating-block-all"|class="rating-header").*?Highest Rating\s+([\d,]+)'),
+        "codechef_solved": number(r'Total Problems Solved:(?:\s*([\d,]+))?'),
+        "cc_contests_attended": number(r'No\. of Contests Participated:\s*<b>(\d+)</b>'),
     }
-    """
-    import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
-    BASE = f"https://codechef-stats.tashif.codes/{encoded_handle}"
+
+
+async def fetch_codechef(session: aiohttp.ClientSession, handle: str) -> dict:
+    """Fetch leaderboard metrics from CodeChef's public profile page."""
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    url = f"https://www.codechef.com/users/{urllib.parse.quote(clean_h, safe='')}"
+    timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+
+    failed_result = {**_profile_metrics(""), "_fetch_ok": False}
 
     async with cc_semaphore:
         try:
-            profile_resp = await safe_fetch(session, BASE)
-            await asyncio.sleep(0.5)
-            heatmap_resp = await safe_fetch(session, f"{BASE}/heatmap")
-            await asyncio.sleep(0.5)
-            contests_resp = await safe_fetch(session, f"{BASE}/contests")
-            await asyncio.sleep(0.5)
-            stats_resp = await safe_fetch(session, f"{BASE}/stats")
+            for attempt in range(3):
+                try:
+                    async with session.get(
+                        url, headers={**BROWSER_HEADERS, "Accept": "text/html"}, timeout=timeout
+                    ) as response:
+                        if response.status == 429:
+                            log.warning("    HTTP 429 fetching %s (Attempt %d/3) — Retrying...", url, attempt + 1)
+                            await asyncio.sleep(retry_delay(response.headers.get("Retry-After"), attempt))
+                            continue
+                        response.raise_for_status()
+                        html = await response.text()
+
+                        # Detect Cloudflare bot challenge or non-profile pages
+                        is_challenge = bool(
+                            re.search(r"<title>\s*(just a moment\.\.\.|attention required!\s*\|\s*cloudflare)\s*</title>", html, re.IGNORECASE)
+                            or 'id="cf-challenge-running"' in html
+                            or 'class="cf-browser-verification"' in html
+                            or 'id="challenge-form"' in html
+                        )
+                        is_redirected_to_home = str(response.url).rstrip('/') in ("https://www.codechef.com", "http://www.codechef.com")
+                        is_valid_profile = (
+                            not is_challenge
+                            and not is_redirected_to_home
+                            and (
+                                "Total Problems Solved:" in html
+                                or "user-details" in html
+                                or "user-header" in html
+                                or "rating-header" in html
+                                or "rating-block-all" in html
+                                or f"/users/{clean_h.lower()}" in html.lower()
+                            )
+                        )
+
+                        if not is_valid_profile:
+                            log.warning("    CodeChef profile invalid or challenged for %s", clean_h)
+                            return failed_result
+
+                        metrics = {**_profile_metrics(html), "_fetch_ok": True}
+                        log.info("    ✓ CodeChef     -> rating=%d solved=%d", metrics["codechef_rating"], metrics["codechef_solved"])
+                        return metrics
+                except (aiohttp.ClientError, asyncio.TimeoutError) as exc:
+                    log.warning("    ERROR fetching %s — %s", url, exc)
+                    return failed_result
         finally:
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(2.0)
 
-    # 1. Profile summary
-    profile = profile_resp.get("data") or {}
-    cc_rating = _safe_int(profile.get("currentRating"))
-    cc_max_rating = _safe_int(profile.get("maxRating"))
-    cc_solved = _safe_int(profile.get("totalSolved"))
-    cc_active_days = _safe_int(profile.get("totalActiveDays"))
-
-    # 2. Heatmap -> streak & submission counts
-    heatmap = heatmap_resp.get("data") or {}
-    cc_total_subs = _safe_int(heatmap.get("totalSubmissions"))
-    cc_current_streak = _safe_int(heatmap.get("currentStreak"))
-    cc_max_streak = _safe_int(heatmap.get("longestStreak"))
-    # Prefer heatmap active days as it's more granular
-    if heatmap.get("totalActiveDays"):
-        cc_active_days = _safe_int(heatmap.get("totalActiveDays"))
-
-    # 3. Contests attended
-    contests_data = contests_resp.get("data") or {}
-    cc_contests = _safe_int(contests_data.get("count"))
-    # If the contests endpoint has a better maxRating, prefer it
-    if contests_data.get("maxRating"):
-        cc_max_rating = _safe_int(contests_data.get("maxRating"))
-
-    # 4. Topic analysis
-    stats_data = stats_resp.get("data") or {}
-    cc_topics = {
-        item["topic"]: item["count"]
-        for item in stats_data.get("topicAnalysis", [])
-        if item.get("topic")
-    }
-
-    result = {
-        "codechef_rating": cc_rating,
-        "codechef_max_rating": cc_max_rating,
-        "codechef_solved": cc_solved,
-        "cc_active_days": cc_active_days,
-        "cc_total_submissions": cc_total_subs,
-        "cc_current_streak": cc_current_streak,
-        "cc_max_streak": cc_max_streak,
-        "cc_contests_attended": cc_contests,
-        "cc_topics": cc_topics,
-    }
-    log.info("    ✓ CodeChef     -> rating=%d solved=%d streak=%d",
-             cc_rating, cc_solved, cc_current_streak)
-    return result
+    return failed_result

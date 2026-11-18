@@ -36,29 +36,31 @@ def calculate_score(snapshot: dict) -> dict:
     cf_solved = snapshot.get("codeforces_solved") or 0
     cf_solved_pts = min(50.0, (cf_solved / 250.0) * 50.0)
 
-    # GFG/CodeChef/TUF/HackerRank (Max 25 pts) - Target: 300 combined
-    gfg_weight = (
-        (snapshot.get("gfg_school") or 0) * 0.0 +
-        (snapshot.get("gfg_basic") or 0) * 0.5 +
-        (snapshot.get("gfg_easy") or 0) * 1.0 +
-        (snapshot.get("gfg_medium") or 0) * 3.0 +
-        (snapshot.get("gfg_hard") or 0) * 6.0
+    # GFG/CodeChef/HackerRank (Max 25 pts) - Target: 300 combined
+    # Weighted by difficulty: School (0.15) < Basic (0.5) < Easy (1.0) < Medium (3.0) < Hard (6.0)
+    gfg_breakdown_sum = (
+        (snapshot.get("gfg_school") or 0) +
+        (snapshot.get("gfg_basic") or 0) +
+        (snapshot.get("gfg_easy") or 0) +
+        (snapshot.get("gfg_medium") or 0) +
+        (snapshot.get("gfg_hard") or 0)
     )
-    if gfg_weight == 0 and (snapshot.get("gfg_solved") or 0) > 0:
+    if gfg_breakdown_sum == 0 and (snapshot.get("gfg_solved") or 0) > 0:
+        # Fallback when difficulty breakdown is unavailable from the scraper
         gfg_weight = (snapshot.get("gfg_solved") or 0) * 1.5
-
-    tuf_weight = (
-        (snapshot.get("tuf_easy") or 0) * 1.0 +
-        (snapshot.get("tuf_medium") or 0) * 3.0 +
-        (snapshot.get("tuf_hard") or 0) * 6.0
-    )
-    if tuf_weight == 0 and (snapshot.get("tuf_solved") or 0) > 0:
-        tuf_weight = (snapshot.get("tuf_solved") or 0) * 1.5
+    else:
+        gfg_weight = (
+            (snapshot.get("gfg_school") or 0) * 0.15 +
+            (snapshot.get("gfg_basic") or 0) * 0.5 +
+            (snapshot.get("gfg_easy") or 0) * 1.0 +
+            (snapshot.get("gfg_medium") or 0) * 3.0 +
+            (snapshot.get("gfg_hard") or 0) * 6.0
+        )
 
     cc_solved = (snapshot.get("codechef_solved") or 0) * 2.0
     hr_badges = snapshot.get("hackerrank_badges") or 0
 
-    other_volume = gfg_weight + tuf_weight + cc_solved + (hr_badges * 5.0)
+    other_volume = gfg_weight + cc_solved + (hr_badges * 5.0)
     other_volume_pts = min(25.0, (other_volume / 300.0) * 25.0)
 
     solved_score = lc_solved_pts + cf_solved_pts + other_volume_pts
@@ -73,13 +75,13 @@ def calculate_score(snapshot: dict) -> dict:
     # ---------------------------------------------------------
     # 2. DEV SCORE (Max 500 Points)
     # ---------------------------------------------------------
-    # Commits (Max 200 pts) - Target: 1000 commits
+    # Commits (Max 100 pts) - Target: 1000 commits (0.1 pts/commit)
     gh_commits = snapshot.get("valid_github_commits") or 0
-    commits_pts = min(200.0, (gh_commits / 1000.0) * 200.0)
+    commits_pts = min(100.0, (gh_commits / 1000.0) * 100.0)
 
-    # Repos (Max 50 pts) - Target: 20 repos
+    # Repos (Max 150 pts) - Target: 30 repos (5.0 pts/repo)
     gh_repos = snapshot.get("github_repos") or 0
-    repos_pts = min(50.0, (gh_repos / 20.0) * 50.0)
+    repos_pts = min(150.0, (gh_repos / 30.0) * 150.0)
 
     # PRs (Max 175 pts) - Target: 20 PRs
     gh_prs = snapshot.get("github_prs") or 0

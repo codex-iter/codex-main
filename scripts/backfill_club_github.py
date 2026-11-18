@@ -5,10 +5,14 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from datetime import datetime, timedelta, timezone
 
-# Load environment variables from frontend/.env.local
+# Load environment variables from available env paths
 current_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(current_dir, "..", "frontend", ".env.local")
-load_dotenv(env_path)
+for env_name in [".env.local", ".env"]:
+    p = os.path.join(current_dir, "..", "frontend", env_name)
+    if os.path.exists(p):
+        load_dotenv(p)
+load_dotenv(os.path.join(current_dir, "..", ".env"))
+load_dotenv()
 
 SUPABASE_URL = os.environ.get("VITE_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("VITE_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -60,9 +64,17 @@ def fetch_github_native_contributions(handle):
     return date_counts
 
 def backfill():
-    # 1. Fetch active members with github handles
-    response = supabase.table("members").select("github_handle").eq("is_active", True).execute()
-    members = response.data
+    # 1. Fetch active members with github handles with pagination
+    members = []
+    page_size = 1000
+    start = 0
+    while True:
+        res = supabase.table("members").select("github_handle").eq("is_active", True).range(start, start + page_size - 1).execute()
+        batch = res.data or []
+        members.extend(batch)
+        if len(batch) < page_size:
+            break
+        start += page_size
     
     handles = [m["github_handle"] for m in members if m.get("github_handle")]
     print(f"Found {len(handles)} active members with GitHub handles.")

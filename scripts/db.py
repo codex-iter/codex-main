@@ -18,9 +18,18 @@ def get_supabase_client() -> Client:
     return create_client(url, key)
 
 def get_active_members(client: Client) -> list:
-    """Fetch all active members from Supabase."""
-    response = client.table("members").select("*").eq("is_active", True).execute()
-    return response.data or []
+    """Fetch all active members from Supabase with range pagination."""
+    all_members = []
+    page_size = 1000
+    start = 0
+    while True:
+        response = client.table("members").select("*").eq("is_active", True).range(start, start + page_size - 1).execute()
+        data = response.data or []
+        all_members.extend(data)
+        if len(data) < page_size:
+            break
+        start += page_size
+    return all_members
 
 def upsert_snapshot(client: Client, snapshot: dict) -> None:
     """Upsert a single activity snapshot to Supabase."""

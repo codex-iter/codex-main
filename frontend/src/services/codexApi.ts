@@ -19,7 +19,6 @@ export interface LeaderboardEntry {
   codeforces_solved?: number;
   codechef_solved?: number;
   gfg_solved?: number;
-  tuf_solved: number;
   github_contributions: number;
   raw_github_commits: number;
   valid_github_commits: number;
@@ -33,7 +32,6 @@ export interface LeaderboardEntry {
     roll_number: string | null;
     avatar_url: string | null;
     github_handle: string | null;
-    tuf_handle: string | null;
   };
 }
 
@@ -74,7 +72,6 @@ export async function getDailyLeaderboard(): Promise<LeaderboardEntry[]> {
       codeforces_solved,
       codechef_solved,
       gfg_solved,
-      tuf_solved,
       github_contributions,
       raw_github_commits,
       valid_github_commits,
@@ -87,8 +84,7 @@ export async function getDailyLeaderboard(): Promise<LeaderboardEntry[]> {
         full_name,
         roll_number,
         avatar_url,
-        github_handle,
-        tuf_handle
+        github_handle
       )
     `
     )
@@ -121,7 +117,7 @@ function countToLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
   if (count === 0 || max === 0) return 0;
   const ratio = count / max;
   if (ratio <= 0.25) return 1;
-  if (ratio <= 0.5)  return 2;
+  if (ratio <= 0.5) return 2;
   if (ratio <= 0.75) return 3;
   return 4;
 }
@@ -167,7 +163,7 @@ export async function getClubGithubHeatmap(): Promise<ActivityDay[]> {
   }
 
   const rows = (data ?? []) as { date: string; commits: number }[];
-  
+
   // Custom level scaling based on collective club volume
   const getLevel = (commits: number) => {
     if (commits === 0) return 0;
@@ -275,10 +271,6 @@ export interface MemberSnapshot {
   codechef_rating: number;
   codechef_max_rating: number;
   codechef_solved: number;
-  tuf_solved: number;
-  tuf_easy: number;
-  tuf_medium: number;
-  tuf_hard: number;
   leetcode_rating: number;
   leetcode_max_rating: number;
   gfg_solved: number;
@@ -303,7 +295,6 @@ export interface MemberProfile {
   codechef_handle: string | null;
   gfg_handle: string | null;
   hackerrank_handle: string | null;
-  tuf_handle: string | null;
   bio: string | null;
   linkedin_url: string | null;
   github_url: string | null;
@@ -320,7 +311,7 @@ export async function getMemberProfile(handle: string): Promise<MemberProfile | 
     const { data: members, error } = await supabase
       .from("members")
       .select(
-        "id, full_name, roll_number, avatar_url, github_handle, leetcode_handle, codeforces_handle, codechef_handle, gfg_handle, hackerrank_handle, tuf_handle, bio, linkedin_url, github_url, portfolio_url"
+        "id, full_name, roll_number, avatar_url, github_handle, leetcode_handle, codeforces_handle, codechef_handle, gfg_handle, hackerrank_handle, bio, linkedin_url, github_url, portfolio_url"
       )
       .eq(field, handle)
       .limit(1);
@@ -343,7 +334,6 @@ export async function getMemberProfile(handle: string): Promise<MemberProfile | 
          gfg_school, gfg_basic, gfg_easy, gfg_medium, gfg_hard, gfg_solved, gfg_score,
          github_contributions, raw_github_commits, valid_github_commits, github_prs, github_issues, codeforces_rating, codeforces_max_rating, codeforces_solved,
          codechef_rating, codechef_max_rating, codechef_solved,
-         tuf_solved, tuf_easy, tuf_medium, tuf_hard,
          hackerrank_badges, contests_attended, leetcode_contests, codeforces_contests, codechef_contests, topic_stats, badges_detail`
       )
       .eq("member_id", member.id)
@@ -375,15 +365,21 @@ export interface MonthlyLeaderboardEntry {
   monthly_problems_solved: number;
   monthly_commits: number;
   monthly_prs: number;
+  monthly_leetcode: number;
+  monthly_codeforces: number;
+  monthly_codechef: number;
+  monthly_gfg: number;
   current_streak: number;
 }
 
 export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
   try {
     const now = new Date();
+    // Get the last day of the previous month in UTC to use as the true baseline
     const year = now.getUTCFullYear();
-    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-    const monthStart = `${year}-${month}-01`;
+    const month = now.getUTCMonth(); // 0-indexed
+    const lastDayPrevMonth = new Date(Date.UTC(year, month, 0));
+    const lastDayStr = lastDayPrevMonth.toISOString().split("T")[0];
 
     // Step B: Query active members
     const { data: members, error: membersError } = await supabase
@@ -400,33 +396,51 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
 
     const memberIds = members.map(m => m.id);
 
-    // Step C: Query activity_snapshots
-    const { data: snapshots, error: snapshotsError } = await supabase
-      .from("activity_snapshots")
-      .select(`
-        member_id,
-        snapshot_date,
-        total_score,
-        dsa_score,
-        dev_score,
-        leetcode_total,
-        codeforces_solved,
-        codechef_solved,
-        gfg_solved,
-        tuf_solved,
-        github_contributions,
-        raw_github_commits,
-        valid_github_commits,
-        github_prs,
-        current_streak
-      `)
-      .gte("snapshot_date", monthStart)
-      .in("member_id", memberIds)
-      .order("snapshot_date", { ascending: true });
+    // Step C: Query activity_snapshots with pagination to avoid 1,000-row PostgREST ceiling
+    const PAGE_SIZE = 1000;
+    let snapshots: any[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (snapshotsError) {
-      console.error("[codexApi] getMonthlyLeaderboard snapshots error:", snapshotsError.message);
-      return [];
+    while (hasMore) {
+      const { data: pageData, error: snapshotsError } = await supabase
+        .from("activity_snapshots")
+        .select(`
+          member_id,
+          snapshot_date,
+          total_score,
+          dsa_score,
+          dev_score,
+          leetcode_total,
+          codeforces_solved,
+          codechef_solved,
+          gfg_solved,
+          github_contributions,
+          raw_github_commits,
+          valid_github_commits,
+          github_prs,
+          current_streak
+        `)
+        .gte("snapshot_date", lastDayStr)
+        .in("member_id", memberIds)
+        .order("snapshot_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (snapshotsError) {
+        console.error("[codexApi] getMonthlyLeaderboard snapshots error:", snapshotsError.message);
+        return [];
+      }
+
+      if (pageData && pageData.length > 0) {
+        snapshots = snapshots.concat(pageData);
+        if (pageData.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
     // Step D: Group by member_id
@@ -442,7 +456,7 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
 
     for (const member of members) {
       const memberSnaps = snapshotsByMember.get(member.id) || [];
-      
+
       if (memberSnaps.length === 0) {
         results.push({
           member_id: member.id,
@@ -455,6 +469,10 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
           monthly_problems_solved: 0,
           monthly_commits: 0,
           monthly_prs: 0,
+          monthly_leetcode: 0,
+          monthly_codeforces: 0,
+          monthly_codechef: 0,
+          monthly_gfg: 0,
           current_streak: 0,
         });
         continue;
@@ -463,33 +481,84 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
       const baseline = memberSnaps[0];
       const latest = memberSnaps[memberSnaps.length - 1];
 
-      const calcTotalSolved = (s: any) => 
-        (s.leetcode_total || 0) + 
-        (s.codeforces_solved || 0) + 
-        (s.codechef_solved || 0) + 
-        (s.gfg_solved || 0) + 
-        (s.tuf_solved || 0);
 
-      const baseSolved = calcTotalSolved(baseline);
-      const latestSolved = calcTotalSolved(latest);
+        
+      const getCommits = (s: any) => s.valid_github_commits || s.github_contributions || 0;
+
+
+      // If only 1 snapshot exists in this month (e.g. baseline is latest), delta is 0
+      const isSingleSnap = memberSnaps.length <= 1;
+
+      let monthly_problems_solved = 0;
+      let monthly_leetcode = 0;
+      let monthly_codeforces = 0;
+      let monthly_codechef = 0;
+      let monthly_gfg = 0;
+      if (!isSingleSnap) {
+        for (let i = 1; i < memberSnaps.length; i++) {
+          const prev = memberSnaps[i - 1];
+          const curr = memberSnaps[i];
+          
+          const processPlatform = (pVal: number | undefined | null, cVal: number | undefined | null) => {
+            const p = pVal || 0;
+            const c = cVal || 0;
+            const delta = Math.max(0, c - p);
+            
+            // Backfill protection: If jumping from 0 to a large number in one day (e.g. adding an existing handle),
+            // cap initial daily surge to 10 rather than completely zeroing genuine first-day progress.
+            if (p === 0 && delta > 10) return 10;
+            
+            // Hard cap for daily spam or extreme glitches
+            if (delta > 30) return 30;
+            
+            return delta;
+          };
+
+          const lcDelta = processPlatform(prev.leetcode_total, curr.leetcode_total);
+          const cfDelta = processPlatform(prev.codeforces_solved, curr.codeforces_solved);
+          const ccDelta = processPlatform(prev.codechef_solved, curr.codechef_solved);
+          const gfgDelta = processPlatform(prev.gfg_solved, curr.gfg_solved);
+
+          monthly_leetcode += lcDelta;
+          monthly_codeforces += cfDelta;
+          monthly_codechef += ccDelta;
+          monthly_gfg += gfgDelta;
+          monthly_problems_solved += (lcDelta + cfDelta + ccDelta + gfgDelta);
+        }
+      }
+
+      const monthly_commits = isSingleSnap ? 0 : Math.max(0, getCommits(latest) - getCommits(baseline));
+      const monthly_prs = isSingleSnap ? 0 : Math.max(0, (latest.github_prs || 0) - (baseline.github_prs || 0));
 
       results.push({
         member_id: member.id,
         full_name: member.full_name,
         handle: member.github_handle || member.id,
         avatar_url: member.avatar_url,
-        monthly_total_score: Math.max(0, (latest.total_score || 0) - (baseline.total_score || 0)),
-        monthly_dsa_score: Math.max(0, (latest.dsa_score || 0) - (baseline.dsa_score || 0)),
-        monthly_dev_score: Math.max(0, (latest.dev_score || 0) - (baseline.dev_score || 0)),
-        monthly_problems_solved: Math.max(0, latestSolved - baseSolved),
-        monthly_commits: Math.max(0, (latest.valid_github_commits || 0) - (baseline.valid_github_commits || 0)),
-        monthly_prs: Math.max(0, (latest.github_prs || 0) - (baseline.github_prs || 0)),
+        monthly_total_score: isSingleSnap ? 0 : Math.max(0, (latest.total_score || 0) - (baseline.total_score || 0)),
+        monthly_dsa_score: monthly_problems_solved,
+        monthly_dev_score: monthly_commits + monthly_prs,
+        monthly_problems_solved,
+        monthly_commits,
+        monthly_prs,
+        monthly_leetcode,
+        monthly_codeforces,
+        monthly_codechef,
+        monthly_gfg,
         current_streak: latest.current_streak || 0,
       });
     }
 
-    // Sort descending by monthly_total_score
-    return results.sort((a, b) => b.monthly_total_score - a.monthly_total_score);
+    // Sort descending by monthly_total_score, with tie-breaking on monthly_dsa_score then current_streak
+    return results.sort((a, b) => {
+      if (b.monthly_total_score !== a.monthly_total_score) {
+        return b.monthly_total_score - a.monthly_total_score;
+      }
+      if (b.monthly_dsa_score !== a.monthly_dsa_score) {
+        return b.monthly_dsa_score - a.monthly_dsa_score;
+      }
+      return (b.current_streak || 0) - (a.current_streak || 0);
+    });
   } catch (err) {
     console.error("[codexApi] getMonthlyLeaderboard unexpected error:", err);
     return [];

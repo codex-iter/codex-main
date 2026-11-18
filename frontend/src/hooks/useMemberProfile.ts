@@ -3,7 +3,6 @@ import { getMemberProfile, type MemberProfile } from "../services/codexApi";
 export interface DerivedStats {
   lcTotal: number;
   gfgTotal: number;
-  tufTotal: number;
   individualTotalSolved: number;
   skillFundamentals: number;
   skillDsa: number;
@@ -59,16 +58,12 @@ export function useMemberProfile(handle: string) {
       latestSnapshot.gfg_hard
     : 0;
 
-  // TUF totals
-  const tufTotal = latestSnapshot ? latestSnapshot.tuf_solved || 0 : 0;
-
-  // Individual Total Solved across platforms
+  // Individual Total Solved across platforms (LeetCode + Codeforces + CodeChef + GFG)
   const individualTotalSolved = latestSnapshot
     ? (latestSnapshot.leetcode_total || 0) +
       (latestSnapshot.codeforces_solved || 0) +
       (latestSnapshot.codechef_solved || 0) +
-      (latestSnapshot.gfg_solved || 0) +
-      (latestSnapshot.tuf_solved || 0)
+      (latestSnapshot.gfg_solved || 0)
     : 0;
 
   // Skill Distribution Categories
@@ -81,10 +76,7 @@ export function useMemberProfile(handle: string) {
     ? (latestSnapshot.leetcode_easy || 0) +
       (latestSnapshot.leetcode_medium || 0) +
       (latestSnapshot.gfg_medium || 0) +
-      (latestSnapshot.gfg_hard || 0) +
-      (latestSnapshot.tuf_easy || 0) +
-      (latestSnapshot.tuf_medium || 0) +
-      (latestSnapshot.tuf_hard || 0)
+      (latestSnapshot.gfg_hard || 0)
     : 0;
   const skillCp = latestSnapshot
     ? (latestSnapshot.codeforces_solved || 0) +
@@ -156,7 +148,6 @@ export function useMemberProfile(handle: string) {
     derivedStats: {
       lcTotal,
       gfgTotal,
-      tufTotal,
       individualTotalSolved,
       skillFundamentals,
       skillDsa,

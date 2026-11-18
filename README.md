@@ -4,6 +4,16 @@ Welcome to the official website repository of **CODEX**. This project serves as 
 
 ---
 
+## ⚔️ Activity Tracker: Leaderboard & Arena Architecture
+
+The CODEX platform features a real-time, automated competitive coding and open-source tracking engine:
+- **The Leaderboard (The Code Colosseum):** Lifetime standings, 1,200 bounded developer score, contest ratings, and global consistency tracking.
+- **The Arena:** Dynamic monthly combat league with daily growth deltas, division clashes (DSA vs DEV), anti-spam backfill detection, transparent per-platform breakdowns (LC, CF, CC, GFG), and real-time Threat Radar.
+
+👉 **[Read the Comprehensive Leaderboard & Arena Architecture Manual (ARENA_AND_LEADERBOARD_README.md)](./ARENA_AND_LEADERBOARD_README.md)** for the complete breakdown of the tech stack, web scrapers, mathematical scoring formulas, Supabase schemas, and GitHub Actions CI/CD pipeline.
+
+---
+
 ## Contributing to CODEX
 
 We welcome contributions from community members. To maintain code quality and an organized workflow, all contributors must follow the contribution process outlined below.

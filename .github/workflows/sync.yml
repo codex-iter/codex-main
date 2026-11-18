@@ -7,10 +7,14 @@ on:
   # Allows manual trigger from the GitHub Actions UI
   workflow_dispatch:
 
+concurrency:
+  group: member-stats-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     name: Run Stats Sync
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository

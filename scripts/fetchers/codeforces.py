@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import aiohttp
-from .utils import _safe_int, BROWSER_HEADERS, REQUEST_TIMEOUT
+from .utils import _safe_int, BROWSER_HEADERS, REQUEST_TIMEOUT, retry_delay
 
 log = logging.getLogger(__name__)
 
@@ -10,18 +10,18 @@ cf_semaphore = asyncio.Semaphore(1)
 async def make_cf_request(session: aiohttp.ClientSession, url: str, max_retries: int = 3) -> dict:
     """
     Makes a request to Codeforces with exponential backoff on 429/503.
-    Limits concurrency using a module-level semaphore and pads requests with a 1s delay.
+    Limits concurrency using a module-level semaphore and spaces requests two seconds apart.
     """
     for attempt in range(1, max_retries + 1):
         async with cf_semaphore:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            # 25s timeout to support accounts with heavy submission history
+            timeout = aiohttp.ClientTimeout(total=25)
             try:
                 async with session.get(url, headers=BROWSER_HEADERS, timeout=timeout) as resp:
                     if resp.status in (429, 503):
                         log.warning("    Codeforces HTTP %s on %s (Attempt %d/%d)", resp.status, url, attempt, max_retries)
                         if attempt < max_retries:
-                            backoff = 2 ** attempt
-                            await asyncio.sleep(backoff)
+                            await asyncio.sleep(retry_delay(resp.headers.get("Retry-After"), attempt))
                             continue
                         return {}
                     
@@ -43,8 +43,8 @@ async def make_cf_request(session: aiohttp.ClientSession, url: str, max_retries:
                 log.warning("    ERROR fetching %s — %s", url, exc)
                 return {}
             finally:
-                # Ensure we never flood CF, minimum 1.0s delay between any requests
-                await asyncio.sleep(1.0)
+                # Codeforces permits one API request every two seconds.
+                await asyncio.sleep(2.0)
                 
     return {}
 
@@ -61,7 +61,9 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
     }
     """
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     
     info_data, status_data, rating_data = await asyncio.gather(
         make_cf_request(session, f"https://codeforces.com/api/user.info?handles={encoded_handle}"),
@@ -83,12 +85,22 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
         for sub in status_data.get("result", []):
             if sub.get("verdict") == "OK":
                 prob = sub.get("problem", {})
-                solved.add((prob.get("contestId"), prob.get("index")))
+                cid = prob.get("contestId")
+                idx = prob.get("index")
+                name = prob.get("name")
+                if cid is not None and idx:
+                    solved.add((cid, idx))
+                elif name:
+                    solved.add((cid or "cf", name))
 
     # 3. Contest history -> count attended
     cf_contests = 0
-    if rating_data and rating_data.get("status") == "OK":
+    rating_ok = bool(rating_data and rating_data.get("status") == "OK")
+    if rating_ok:
         cf_contests = len(rating_data.get("result", []))
+
+    info_ok = bool(info_data and info_data.get("status") == "OK" and info_data.get("result"))
+    status_ok = bool(status_data and status_data.get("status") == "OK")
 
     result = {
         "codeforces_rating": rating,
@@ -96,6 +108,10 @@ async def fetch_codeforces(session: aiohttp.ClientSession, handle: str) -> dict:
         "codeforces_rank_title": rank_title,
         "codeforces_solved": len(solved),
         "cf_contests_attended": cf_contests,
+        "_info_ok": info_ok,
+        "_status_ok": status_ok,
+        "_rating_ok": rating_ok,
+        "_fetch_ok": info_ok or status_ok or rating_ok,
     }
     log.info("    ✓ Codeforces   -> %s", result)
     return result

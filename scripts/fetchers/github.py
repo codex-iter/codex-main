@@ -23,7 +23,7 @@ async def fetch_github(session: aiohttp.ClientSession, handle: str) -> dict:
     query = """
     query($login: String!) {
       user(login: $login) {
-        repositories(privacy: PUBLIC) { totalCount }
+        repositories(privacy: PUBLIC, isFork: false) { totalCount }
         contributionsCollection {
           contributionCalendar { totalContributions }
         }
@@ -32,7 +32,9 @@ async def fetch_github(session: aiohttp.ClientSession, handle: str) -> dict:
     """
     
     import urllib.parse
-    encoded_handle = urllib.parse.quote(handle)
+    from .utils import clean_handle
+    clean_h = clean_handle(handle)
+    encoded_handle = urllib.parse.quote(clean_h)
     
     pr_url = f"https://api.github.com/search/issues?q=author:{encoded_handle}+type:pr"
     issue_url = f"https://api.github.com/search/issues?q=author:{encoded_handle}+type:issue"
@@ -43,7 +45,7 @@ async def fetch_github(session: aiohttp.ClientSession, handle: str) -> dict:
             "https://api.github.com/graphql",
             method="POST",
             headers=headers,
-            json_body={"query": query, "variables": {"login": handle}},
+            json_body={"query": query, "variables": {"login": clean_h}},
         )
     
     async def _fetch_rest(url):
@@ -60,11 +62,31 @@ async def fetch_github(session: aiohttp.ClientSession, handle: str) -> dict:
         return_exceptions=True
     )
     
+    gql_ok = bool(
+        not isinstance(gql_data, Exception)
+        and gql_data
+        and gql_data.get("data", {}).get("user") is not None
+    )
+    prs_ok = bool(
+        not isinstance(pr_data, Exception)
+        and pr_data
+        and "total_count" in pr_data
+    )
+    issues_ok = bool(
+        not isinstance(issue_data, Exception)
+        and issue_data
+        and "total_count" in issue_data
+    )
+
     result = {
         "github_contributions": 0,
         "github_repos": 0,
         "github_prs": 0,
         "github_issues": 0,
+        "_gql_ok": gql_ok,
+        "_prs_ok": prs_ok,
+        "_issues_ok": issues_ok,
+        "_fetch_ok": gql_ok,
     }
 
     if not isinstance(gql_data, Exception) and gql_data:
