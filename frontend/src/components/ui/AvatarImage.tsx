@@ -16,17 +16,21 @@ export default function AvatarImage({
   fallbackDicebear = true,
 }: AvatarImageProps) {
   const cleanHandle = handle ? handle.replace(/^@/, "").trim() : null;
-  const initialSrc = url || (cleanHandle ? `https://github.com/${cleanHandle}.png` : null);
+  const isBlockedCdn = url?.includes("licdn.com");
+  const validUrl = isBlockedCdn ? null : url;
+  const initialSrc = validUrl || (cleanHandle ? `https://github.com/${cleanHandle}.png` : null);
   const [imgSrc, setImgSrc] = useState<string | null>(initialSrc);
   const [stage, setStage] = useState<"url" | "github" | "dicebear" | "initial">(
-    url ? "url" : cleanHandle ? "github" : "dicebear"
+    validUrl ? "url" : cleanHandle ? "github" : "dicebear"
   );
 
   useEffect(() => {
     const nextHandle = handle ? handle.replace(/^@/, "").trim() : null;
-    const nextSrc = url || (nextHandle ? `https://github.com/${nextHandle}.png` : null);
+    const nextBlocked = url?.includes("licdn.com");
+    const nextValidUrl = nextBlocked ? null : url;
+    const nextSrc = nextValidUrl || (nextHandle ? `https://github.com/${nextHandle}.png` : null);
     setImgSrc(nextSrc);
-    setStage(url ? "url" : nextHandle ? "github" : "dicebear");
+    setStage(nextValidUrl ? "url" : nextHandle ? "github" : "dicebear");
   }, [url, handle]);
 
   const handleError = () => {

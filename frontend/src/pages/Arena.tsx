@@ -159,7 +159,11 @@ export default function Arena() {
     const seed = encodeURIComponent(m.full_name || cleanHandle || "warrior");
     const dicebearUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundColor=0f172a&textColor=ffffff`;
 
-    const userPhoto = (m.avatar_url && m.avatar_url.trim()) ? m.avatar_url.trim() : undefined;
+    const rawUrl = (m.avatar_url && m.avatar_url.trim()) ? m.avatar_url.trim() : undefined;
+    // LinkedIn CDN (media.licdn.com) is blocked by browser ad/privacy blockers (net::ERR_BLOCKED_BY_CLIENT)
+    const isBlockedCdn = rawUrl?.includes("licdn.com");
+    const userPhoto = isBlockedCdn ? undefined : rawUrl;
+
     const image = userPhoto || githubUrl || dicebearUrl;
     const fallback = githubUrl || dicebearUrl;
 
@@ -376,10 +380,14 @@ export default function Arena() {
               <div className="relative min-w-[260px] sm:w-80">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
+                  id="arena-warrior-search"
+                  name="warriorSearch"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="SEARCH BY NAME OR @HANDLE..."
+                  autoComplete="off"
+                  aria-label="Search warrior by name or handle"
                   className="w-full bg-slate-50 border-2 border-slate-900 pl-9 pr-8 py-2 text-xs sm:text-sm font-mono font-bold uppercase placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-900 transition-all"
                 />
                 {searchQuery && (
