@@ -56,10 +56,10 @@ export default function Arena() {
   }, []);
 
   const now = new Date();
-  const monthName = now.toLocaleString("default", { month: "long" }).toUpperCase();
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const monthName = now.toLocaleString("default", { month: "long", timeZone: "UTC" }).toUpperCase();
+  const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
   const diff = endOfMonth.getTime() - now.getTime();
-  const daysRemaining = Math.ceil(diff / (1000 * 3600 * 24));
+  const daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
 
   const dsaSorted = useMemo(() => {
     return [...data]
@@ -758,7 +758,7 @@ export default function Arena() {
 
                 {/* ── ALGORITHMS DIVISION BATTLE ROSTER ── */}
                 {(() => {
-                  const isPodiumActive = !searchQuery && selectedTier === "ALL";
+                  const isPodiumActive = !searchQuery && selectedTier === "ALL" && dsaSorted.length >= 3;
                   const rosterList = isPodiumActive ? filteredDsa.filter((m) => m.rank > 3) : filteredDsa;
                   const totalPages = Math.max(1, Math.ceil(rosterList.length / itemsPerPage));
                   const currentPage = Math.min(dsaPage, totalPages);
@@ -1197,7 +1197,7 @@ export default function Arena() {
 
                 {/* ── DEVELOPMENT DIVISION BATTLE ROSTER ── */}
                 {(() => {
-                  const isPodiumActive = !searchQuery && selectedTier === "ALL";
+                  const isPodiumActive = !searchQuery && selectedTier === "ALL" && devSorted.length >= 3;
                   const rosterList = isPodiumActive ? filteredDev.filter((m) => m.rank > 3) : filteredDev;
                   const totalPages = Math.max(1, Math.ceil(rosterList.length / itemsPerPage));
                   const currentPage = Math.min(devPage, totalPages);

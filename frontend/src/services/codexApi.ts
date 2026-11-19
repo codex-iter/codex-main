@@ -330,11 +330,16 @@ export interface MemberProfile {
 }
 
 /**
- * Fetches a member profile by github_handle (tried first) or roll_number,
+ * Fetches a member profile by github_handle (tried first), roll_number, or UUID id,
  * along with their most recent activity_snapshot row.
  */
 export async function getMemberProfile(handle: string): Promise<MemberProfile | null> {
-  for (const field of ["github_handle", "roll_number"] as const) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(handle);
+  const searchFields: ("github_handle" | "roll_number" | "id")[] = isUuid
+    ? ["id", "github_handle", "roll_number"]
+    : ["github_handle", "roll_number"];
+
+  for (const field of searchFields) {
     const { data: members, error } = await supabase
       .from("members")
       .select(
