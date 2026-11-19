@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import SEO from "../components/SEO";
@@ -36,7 +36,6 @@ export default function Arena() {
   const [selectedTier, setSelectedTier] = useState<TierFilter>("ALL");
   const [dsaPage, setDsaPage] = useState(1);
   const [devPage, setDevPage] = useState(1);
-  const battlegroundRef = useRef<HTMLDivElement>(null);
   const dsaRosterRef = useRef<HTMLDivElement>(null);
   const devRosterRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 8;
@@ -84,25 +83,28 @@ export default function Arena() {
       .map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [data]);
 
-  const filterList = (list: (MonthlyLeaderboardEntry & { rank: number })[]) => {
-    return list.filter((member) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        member.full_name.toLowerCase().includes(q) ||
-        (member.handle && member.handle.toLowerCase().includes(q));
+  const filterList = useCallback(
+    (list: (MonthlyLeaderboardEntry & { rank: number })[]) => {
+      return list.filter((member) => {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch =
+          !q ||
+          member.full_name.toLowerCase().includes(q) ||
+          (member.handle && member.handle.toLowerCase().includes(q));
 
-      if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
 
-      if (selectedTier === "APEX") return member.rank <= 3;
-      if (selectedTier === "DIAMOND") return member.rank > 3 && member.rank <= 10;
-      if (selectedTier === "CONTENDER") return member.rank > 10;
-      return true;
-    });
-  };
+        if (selectedTier === "APEX") return member.rank <= 3;
+        if (selectedTier === "DIAMOND") return member.rank > 3 && member.rank <= 10;
+        if (selectedTier === "CONTENDER") return member.rank > 10;
+        return true;
+      });
+    },
+    [searchQuery, selectedTier]
+  );
 
-  const filteredDsa = useMemo(() => filterList(dsaSorted), [dsaSorted, searchQuery, selectedTier]);
-  const filteredDev = useMemo(() => filterList(devSorted), [devSorted, searchQuery, selectedTier]);
+  const filteredDsa = useMemo(() => filterList(dsaSorted), [dsaSorted, filterList]);
+  const filteredDev = useMemo(() => filterList(devSorted), [devSorted, filterList]);
 
   useEffect(() => {
     setDsaPage(1);
@@ -327,7 +329,7 @@ export default function Arena() {
         )}
 
         {/* ── TOURNAMENT CONTROL HUB & SEARCH CONSOLE ── */}
-        <div id="division-battleground" ref={battlegroundRef} className="scroll-mt-20 mb-8 sm:mb-10">
+        <div id="division-battleground" className="scroll-mt-20 mb-8 sm:mb-10">
           <div className="border-4 border-slate-900 bg-white brutalist-shadow p-4 sm:p-6 space-y-4">
             {/* Row 1: Division Selector & Search */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b-2 border-slate-900">

@@ -399,6 +399,40 @@ export interface MonthlyLeaderboardEntry {
   current_streak: number;
 }
 
+interface MonthlySnapshotRow {
+  member_id: string;
+  snapshot_date: string;
+  total_score: number;
+  dsa_score: number;
+  dev_score: number;
+  leetcode_total: number;
+  codeforces_solved: number;
+  codechef_solved: number;
+  gfg_solved: number;
+  github_contributions: number;
+  raw_github_commits: number;
+  valid_github_commits: number;
+  github_prs: number;
+  current_streak: number;
+}
+
+const getCommits = (s: MonthlySnapshotRow) => s.valid_github_commits || s.github_contributions || 0;
+
+const processPlatform = (pVal: number | undefined | null, cVal: number | undefined | null) => {
+  const p = pVal || 0;
+  const c = cVal || 0;
+  const delta = Math.max(0, c - p);
+  
+  // Backfill protection: If jumping from 0 to a large number in one day (e.g. adding an existing handle),
+  // cap initial daily surge to 10 rather than completely zeroing genuine first-day progress.
+  if (p === 0 && delta > 10) return 10;
+  
+  // Hard cap for daily spam or extreme glitches
+  if (delta > 30) return 30;
+  
+  return delta;
+};
+
 export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
   try {
     const now = new Date();
@@ -425,7 +459,7 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
 
     // Step C: Query activity_snapshots with pagination to avoid 1,000-row PostgREST ceiling
     const PAGE_SIZE = 1000;
-    let snapshots: any[] = [];
+    let snapshots: MonthlySnapshotRow[] = [];
     let from = 0;
     let hasMore = true;
 
@@ -459,7 +493,7 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
       }
 
       if (pageData && pageData.length > 0) {
-        snapshots = snapshots.concat(pageData);
+        snapshots = snapshots.concat(pageData as unknown as MonthlySnapshotRow[]);
         if (pageData.length < PAGE_SIZE) {
           hasMore = false;
         } else {
@@ -471,7 +505,7 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
     }
 
     // Step D: Group by member_id
-    const snapshotsByMember = new Map<string, any[]>();
+    const snapshotsByMember = new Map<string, MonthlySnapshotRow[]>();
     for (const snap of (snapshots || [])) {
       if (!snapshotsByMember.has(snap.member_id)) {
         snapshotsByMember.set(snap.member_id, []);
@@ -508,11 +542,6 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
       const baseline = memberSnaps[0];
       const latest = memberSnaps[memberSnaps.length - 1];
 
-
-        
-      const getCommits = (s: any) => s.valid_github_commits || s.github_contributions || 0;
-
-
       // If only 1 snapshot exists in this month (e.g. baseline is latest), delta is 0
       const isSingleSnap = memberSnaps.length <= 1;
 
@@ -525,21 +554,6 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
         for (let i = 1; i < memberSnaps.length; i++) {
           const prev = memberSnaps[i - 1];
           const curr = memberSnaps[i];
-          
-          const processPlatform = (pVal: number | undefined | null, cVal: number | undefined | null) => {
-            const p = pVal || 0;
-            const c = cVal || 0;
-            const delta = Math.max(0, c - p);
-            
-            // Backfill protection: If jumping from 0 to a large number in one day (e.g. adding an existing handle),
-            // cap initial daily surge to 10 rather than completely zeroing genuine first-day progress.
-            if (p === 0 && delta > 10) return 10;
-            
-            // Hard cap for daily spam or extreme glitches
-            if (delta > 30) return 30;
-            
-            return delta;
-          };
 
           const lcDelta = processPlatform(prev.leetcode_total, curr.leetcode_total);
           const cfDelta = processPlatform(prev.codeforces_solved, curr.codeforces_solved);

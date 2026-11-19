@@ -18,7 +18,6 @@ export default function LeaderboardList({ members, sortMode = 'GLOBAL' }: Leader
 
   const totalPages = Math.ceil(members.length / itemsPerPage);
   const currentMembers = members.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  if (members.length === 0) return null;
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
