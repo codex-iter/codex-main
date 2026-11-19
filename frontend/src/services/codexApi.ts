@@ -52,51 +52,78 @@ export interface LeaderboardEntry {
 export async function getDailyLeaderboard(): Promise<LeaderboardEntry[]> {
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD" UTC
 
-  const { data, error } = await supabase
-    .from("activity_snapshots")
-    .select(
-      `
+  const selectFields = `
+    id,
+    snapshot_date,
+    total_score,
+    active_days,
+    current_streak,
+    dsa_score,
+    dev_score,
+    github_prs,
+    github_issues,
+    leetcode_total,
+    leetcode_easy,
+    leetcode_medium,
+    leetcode_hard,
+    codeforces_solved,
+    codechef_solved,
+    gfg_solved,
+    github_contributions,
+    raw_github_commits,
+    valid_github_commits,
+    codeforces_rating,
+    codechef_rating,
+    hackerrank_badges,
+    contests_attended,
+    members (
       id,
-      snapshot_date,
-      total_score,
-      active_days,
-      current_streak,
-      dsa_score,
-      dev_score,
-      github_prs,
-      github_issues,
-      leetcode_total,
-      leetcode_easy,
-      leetcode_medium,
-      leetcode_hard,
-      codeforces_solved,
-      codechef_solved,
-      gfg_solved,
-      github_contributions,
-      raw_github_commits,
-      valid_github_commits,
-      codeforces_rating,
-      codechef_rating,
-      hackerrank_badges,
-      contests_attended,
-      members (
-        id,
-        full_name,
-        roll_number,
-        avatar_url,
-        github_handle
-      )
-    `
+      full_name,
+      roll_number,
+      avatar_url,
+      github_handle
     )
+  `;
+
+  // 1. Try today's snapshot
+  const { data: todayData, error: todayError } = await supabase
+    .from("activity_snapshots")
+    .select(selectFields)
     .eq("snapshot_date", today)
     .order("total_score", { ascending: false });
 
-  if (error) {
-    console.error("[codexApi] getDailyLeaderboard error:", error.message);
-    throw new Error(error.message);
+  if (todayError) {
+    console.error("[codexApi] getDailyLeaderboard error:", todayError.message);
   }
 
-  return (data ?? []) as unknown as LeaderboardEntry[];
+  if (todayData && todayData.length > 0) {
+    return todayData as unknown as LeaderboardEntry[];
+  }
+
+  // 2. Fallback: If today's sync hasn't run yet, fetch the most recent completed snapshot date
+  const { data: latestSnap, error: latestError } = await supabase
+    .from("activity_snapshots")
+    .select("snapshot_date")
+    .order("snapshot_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError || !latestSnap?.snapshot_date) {
+    return [];
+  }
+
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("activity_snapshots")
+    .select(selectFields)
+    .eq("snapshot_date", latestSnap.snapshot_date)
+    .order("total_score", { ascending: false });
+
+  if (fallbackError) {
+    console.error("[codexApi] getDailyLeaderboard fallback error:", fallbackError.message);
+    return [];
+  }
+
+  return (fallbackData ?? []) as unknown as LeaderboardEntry[];
 }
 
 // ── Club Activity Map ──────────────────────────────────────────────────────
