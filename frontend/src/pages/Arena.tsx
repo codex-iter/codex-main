@@ -14,12 +14,10 @@ import {
   ChevronRight, 
   ChevronLeft, 
   Radar, 
-  Activity, 
   GitCommit, 
   GitPullRequest, 
   Code2, 
-  X, 
-  Target 
+  X 
 } from "lucide-react";
 import AvatarImage from "../components/ui/AvatarImage";
 import HoloCard from "../components/ui/HoloCard";
@@ -446,73 +444,6 @@ export default function Arena() {
             </div>
           </div>
         </div>
-
-        {/* ── DIVISION TACTICAL INTEL HUD STRIP ── */}
-        {!isLoading && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-yellow-400 flex items-center justify-center font-black text-slate-900 flex-shrink-0">
-                <Trophy className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">
-                  {activeCategory === "DEV" ? "DEV APEX MVP" : "ALGO APEX MVP"}
-                </div>
-                <div className="text-sm sm:text-base font-black truncate uppercase text-slate-900">
-                  {activeCategory === "DEV" ? topDevLeader?.full_name : topDsaLeader?.full_name}
-                </div>
-                <div className="text-[10px] font-mono font-bold text-slate-700">
-                  {activeCategory === "DEV"
-                    ? `${Math.floor(topDevLeader?.monthly_dev_score || 0)} XP`
-                    : `${Math.floor(topDsaLeader?.monthly_dsa_score || 0)} XP`}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-red-500 text-white flex items-center justify-center font-black flex-shrink-0">
-                <Target className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">
-                  {activeCategory === "DEV" ? "COMMITS LOGGED" : "DSA SOLVES"}
-                </div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 leading-none">
-                  {activeCategory === "DEV" ? totalDevCommits : totalDsaSolved}
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 uppercase">MONTHLY SECTOR TOTAL</div>
-              </div>
-            </div>
-
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-orange-500 text-white flex items-center justify-center font-black flex-shrink-0">
-                <Flame className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">MAX RAMPAGE</div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 leading-none">
-                  {Math.max(0, ...data.map((m) => m.current_streak || 0))}d
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 uppercase">LONGEST ACTIVE STREAK</div>
-              </div>
-            </div>
-
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-[#0707f2] text-white flex items-center justify-center font-black flex-shrink-0">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">COMBAT VELOCITY</div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 leading-none">
-                  {activeCategory === "DEV"
-                    ? Math.round(totalDevCommits / Math.max(1, devSorted.length))
-                    : Math.round(totalDsaSolved / Math.max(1, dsaSorted.length))}
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 uppercase">AVG / WARRIOR</div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── BATTLEGROUND CONTENT ── */}
         {isLoading ? (
