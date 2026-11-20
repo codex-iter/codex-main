@@ -202,13 +202,13 @@ export default function Arena() {
 
             <div className="relative z-10 flex flex-col items-start gap-4 sm:gap-6">
               {/* Top Row: Badges + Rank Mechanism Button */}
-              <div className="w-full flex items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2.5 sm:gap-4">
-                  <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-3 sm:px-4 py-1 font-mono font-bold text-xs uppercase border border-slate-900 brutalist-shadow-sm">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+              <div className="w-full flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-4">
+                  <div className="inline-flex items-center gap-1.5 bg-slate-900 text-white px-2 sm:px-4 py-0.5 sm:py-1 font-mono font-bold text-[10px] sm:text-xs uppercase border border-slate-900 brutalist-shadow-sm">
+                    <span className="w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 rounded-full bg-red-500 animate-ping" />
                     SEASON: ACTIVE COMBAT
                   </div>
-                  <div className="bg-[#FACC15] text-slate-900 px-3 sm:px-4 py-1 font-mono font-black text-xs uppercase border-2 border-slate-900 brutalist-shadow-sm">
+                  <div className="bg-[#FACC15] text-slate-900 px-2 sm:px-4 py-0.5 sm:py-1 font-mono font-black text-[10px] sm:text-xs uppercase border-2 border-slate-900 brutalist-shadow-sm">
                     ⚡ {monthName} LEAGUE
                   </div>
                 </div>
@@ -216,16 +216,16 @@ export default function Arena() {
                 {/* ── RANK MECHANISM BUTTON ── */}
                 <button
                   onClick={() => setIsRankModalOpen(true)}
-                  className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-xs sm:text-sm px-3 sm:px-5 py-1.5 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-2 transition-all cursor-pointer active:translate-y-0.5"
+                  className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-[11px] sm:text-sm px-2.5 sm:px-5 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5"
                 >
-                  <span className="text-base sm:text-lg">❓</span>
+                  <span className="text-sm sm:text-lg">❓</span>
                   <span className="hidden sm:inline">RANK MECHANISM</span>
                   <span className="sm:hidden">RULES</span>
                 </button>
               </div>
 
               {/* Title Header */}
-              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-slate-900 tracking-tight uppercase leading-none">
+              <h1 className="text-6xl sm:text-7xl md:text-8xl font-black text-slate-900 tracking-tight uppercase leading-none">
                 THE <span className="text-red-500 underline decoration-4 underline-offset-8">ARENA</span>
               </h1>
 
