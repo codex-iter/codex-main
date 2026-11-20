@@ -225,8 +225,12 @@ export default function Arena() {
               </div>
 
               {/* Title Header */}
-              <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-slate-900 tracking-tight uppercase leading-none">
-                THE <span className="text-red-500 underline decoration-4 underline-offset-8">ARENA</span>
+              <h1 className="text-5xl xs:text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black text-slate-900 tracking-tighter uppercase leading-none flex items-baseline gap-2.5 sm:gap-4 flex-wrap">
+                <span className="[text-shadow:2px_2px_0px_#94a3b8] sm:[text-shadow:4px_4px_0px_#94a3b8]">THE</span>
+                <span className="relative inline-block text-red-600 [text-shadow:3px_3px_0px_#0f172a] sm:[text-shadow:5px_5px_0px_#0f172a]">
+                  ARENA
+                  <span className="block h-1.5 sm:h-2.5 w-full bg-red-600 border-2 border-slate-900 shadow-[2px_2px_0px_#0f172a] mt-1 sm:mt-2" />
+                </span>
               </h1>
 
               {/* HUD Countdown & Stats Bar */}
