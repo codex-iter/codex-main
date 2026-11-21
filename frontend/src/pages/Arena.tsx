@@ -56,9 +56,11 @@ export default function Arena() {
     fetchData();
   }, []);
 
+  const isAnyModalOpen = isRankModalOpen || isWinnersModalOpen;
+
   // Lock body/window scroll when Rank Mechanism or Winners modal is open
   useEffect(() => {
-    if (isRankModalOpen || isWinnersModalOpen) {
+    if (isAnyModalOpen) {
       const originalBodyOverflow = document.body.style.overflow;
       const originalHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = "hidden";
@@ -78,7 +80,7 @@ export default function Arena() {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [isRankModalOpen, isWinnersModalOpen]);
+  }, [isAnyModalOpen]);
 
   const now = new Date();
   const monthName = now.toLocaleString("default", { month: "long" }).toUpperCase();
@@ -239,25 +241,25 @@ export default function Arena() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {/* ── WINNERS BUTTON ── */}
                   <button
                     onClick={() => setIsWinnersModalOpen(true)}
-                    className="bg-[#FACC15] hover:bg-yellow-400 text-slate-950 font-mono font-black text-[11px] sm:text-sm px-2.5 sm:px-4 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5"
+                    className="bg-[#FACC15] hover:bg-yellow-400 text-slate-950 font-mono font-black text-[10px] sm:text-sm px-2 sm:px-4 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5 whitespace-nowrap"
                   >
-                    <span className="text-sm sm:text-lg">🏆</span>
+                    <span className="text-xs sm:text-lg">🏆</span>
                     <span className="hidden sm:inline">WINNERS</span>
-                    <span className="sm:hidden">TOP 3</span>
+                    <span className="sm:hidden whitespace-nowrap">TOP 3</span>
                   </button>
 
                   {/* ── RANK MECHANISM BUTTON ── */}
                   <button
                     onClick={() => setIsRankModalOpen(true)}
-                    className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-[11px] sm:text-sm px-2.5 sm:px-5 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5"
+                    className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-[10px] sm:text-sm px-2 sm:px-5 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5 whitespace-nowrap"
                   >
-                    <span className="text-sm sm:text-lg">❓</span>
+                    <span className="text-xs sm:text-lg">❓</span>
                     <span className="hidden sm:inline">RANK MECHANISM</span>
-                    <span className="sm:hidden">RULES</span>
+                    <span className="sm:hidden whitespace-nowrap">RULES</span>
                   </button>
                 </div>
               </div>
@@ -1595,9 +1597,7 @@ export default function Arena() {
         {isRankModalOpen && (
           <div
             onClick={() => setIsRankModalOpen(false)}
-            onWheel={(e) => e.preventDefault()}
-            onTouchMove={(e) => e.preventDefault()}
-            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none"
+            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none touch-none"
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
@@ -1738,9 +1738,7 @@ export default function Arena() {
         {isWinnersModalOpen && (
           <div
             onClick={() => setIsWinnersModalOpen(false)}
-            onWheel={(e) => e.preventDefault()}
-            onTouchMove={(e) => e.preventDefault()}
-            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none"
+            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none touch-none"
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
