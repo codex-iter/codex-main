@@ -54,6 +54,29 @@ export default function Arena() {
     fetchData();
   }, []);
 
+  // Lock body/window scroll when Rank Mechanism modal is open
+  useEffect(() => {
+    if (isRankModalOpen) {
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setIsRankModalOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [isRankModalOpen]);
+
   const now = new Date();
   const monthName = now.toLocaleString("default", { month: "long" }).toUpperCase();
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -1626,18 +1649,20 @@ export default function Arena() {
         )}
       </main>
 
-      {/* ── RANK MECHANISM MODAL OVERLAY (NO SCROLL ALL-IN-ONE VIEW) ── */}
+      {/* ── RANK MECHANISM MODAL OVERLAY (NO SCROLL ALL-IN-ONE VIEW AT TOP) ── */}
       <AnimatePresence>
         {isRankModalOpen && (
           <div
             onClick={() => setIsRankModalOpen(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none"
+            onWheel={(e) => e.preventDefault()}
+            onTouchMove={(e) => e.preventDefault()}
+            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none"
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.96, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -20 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="bg-white border-4 border-slate-900 brutalist-shadow max-w-3xl w-full p-3.5 sm:p-5 relative font-display text-slate-900 overflow-hidden flex flex-col gap-2.5 sm:gap-3"
             >
