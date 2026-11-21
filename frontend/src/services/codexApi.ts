@@ -438,14 +438,16 @@ const processPlatform = (pVal: number | undefined | null, cVal: number | undefin
   return delta;
 };
 
-export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
+export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: number): Promise<MonthlyLeaderboardEntry[]> {
   try {
     const now = new Date();
     // Get the last day of the previous month in UTC to use as the true baseline
-    const year = now.getUTCFullYear();
-    const month = now.getUTCMonth(); // 0-indexed
+    const year = targetYear !== undefined ? targetYear : now.getUTCFullYear();
+    const month = targetMonth !== undefined ? targetMonth : now.getUTCMonth(); // 0-indexed
     const lastDayPrevMonth = new Date(Date.UTC(year, month, 0));
     const lastDayStr = lastDayPrevMonth.toISOString().split("T")[0];
+    const lastDayTargetMonth = new Date(Date.UTC(year, month + 1, 0));
+    const lastDayTargetStr = lastDayTargetMonth.toISOString().split("T")[0];
 
     // Step B: Query active members
     const { data: members, error: membersError } = await supabase
@@ -488,6 +490,7 @@ export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]
           current_streak
         `)
         .gte("snapshot_date", lastDayStr)
+        .lte("snapshot_date", lastDayTargetStr)
         .in("member_id", memberIds)
         .order("snapshot_date", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);

@@ -14,12 +14,10 @@ import {
   ChevronRight, 
   ChevronLeft, 
   Radar, 
-  Activity, 
   GitCommit, 
   GitPullRequest, 
   Code2, 
-  X, 
-  Target 
+  X 
 } from "lucide-react";
 import AvatarImage from "../components/ui/AvatarImage";
 import HoloCard from "../components/ui/HoloCard";
@@ -32,6 +30,8 @@ export default function Arena() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<ArenaCategory>("DSA");
   const [isRankModalOpen, setIsRankModalOpen] = useState(false);
+  const [isWinnersModalOpen, setIsWinnersModalOpen] = useState(false);
+  const [selectedWinnersMonth, setSelectedWinnersMonth] = useState<string>("CURRENT");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<TierFilter>("ALL");
   const [dsaPage, setDsaPage] = useState(1);
@@ -54,6 +54,32 @@ export default function Arena() {
     }
     fetchData();
   }, []);
+
+  const isAnyModalOpen = isRankModalOpen || isWinnersModalOpen;
+
+  // Lock body/window scroll when Rank Mechanism or Winners modal is open
+  useEffect(() => {
+    if (isAnyModalOpen) {
+      const originalBodyOverflow = document.body.style.overflow;
+      const originalHtmlOverflow = document.documentElement.style.overflow;
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setIsRankModalOpen(false);
+          setIsWinnersModalOpen(false);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [isAnyModalOpen]);
 
   const now = new Date();
   const monthName = now.toLocaleString("default", { month: "long", timeZone: "UTC" }).toUpperCase();
@@ -206,30 +232,42 @@ export default function Arena() {
 
             <div className="relative z-10 flex flex-col items-start gap-4 sm:gap-6">
               {/* Top Row: Badges + Rank Mechanism Button */}
-              <div className="w-full flex items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2.5 sm:gap-4">
-                  <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-3 sm:px-4 py-1 font-mono font-bold text-xs uppercase border border-slate-900 brutalist-shadow-sm">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+              <div className="w-full flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-4">
+                  <div className="inline-flex items-center gap-1.5 bg-slate-900 text-white px-2 sm:px-4 py-0.5 sm:py-1 font-mono font-bold text-[10px] sm:text-xs uppercase border border-slate-900 brutalist-shadow-sm">
+                    <span className="w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 rounded-full bg-red-500 animate-ping" />
                     SEASON: ACTIVE COMBAT
                   </div>
-                  <div className="bg-[#FACC15] text-slate-900 px-3 sm:px-4 py-1 font-mono font-black text-xs uppercase border-2 border-slate-900 brutalist-shadow-sm">
+                  <div className="bg-[#FACC15] text-slate-900 px-2 sm:px-4 py-0.5 sm:py-1 font-mono font-black text-[10px] sm:text-xs uppercase border-2 border-slate-900 brutalist-shadow-sm">
                     ⚡ {monthName} LEAGUE
                   </div>
                 </div>
 
-                {/* ── RANK MECHANISM BUTTON ── */}
-                <button
-                  onClick={() => setIsRankModalOpen(true)}
-                  className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-xs sm:text-sm px-3 sm:px-5 py-1.5 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-2 transition-all cursor-pointer active:translate-y-0.5"
-                >
-                  <span className="text-base sm:text-lg">❓</span>
-                  <span className="hidden sm:inline">RANK MECHANISM</span>
-                  <span className="sm:hidden">RULES</span>
-                </button>
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {/* ── WINNERS BUTTON ── */}
+                  <button
+                    onClick={() => setIsWinnersModalOpen(true)}
+                    className="bg-[#FACC15] hover:bg-yellow-400 text-slate-950 font-mono font-black text-[10px] sm:text-sm px-2 sm:px-4 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5 whitespace-nowrap"
+                  >
+                    <span className="text-xs sm:text-lg">🏆</span>
+                    <span className="hidden sm:inline">WINNERS</span>
+                    <span className="sm:hidden whitespace-nowrap">TOP 3</span>
+                  </button>
+
+                  {/* ── RANK MECHANISM BUTTON ── */}
+                  <button
+                    onClick={() => setIsRankModalOpen(true)}
+                    className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-[10px] sm:text-sm px-2 sm:px-5 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5 whitespace-nowrap"
+                  >
+                    <span className="text-xs sm:text-lg">❓</span>
+                    <span className="hidden sm:inline">RANK MECHANISM</span>
+                    <span className="sm:hidden whitespace-nowrap">RULES</span>
+                  </button>
+                </div>
               </div>
 
               {/* Title Header */}
-              <h1 className="text-4xl sm:text-6xl md:text-8xl font-black text-slate-900 tracking-tight uppercase leading-none">
+              <h1 className="text-6xl sm:text-7xl md:text-8xl font-black text-slate-900 tracking-tight uppercase leading-none">
                 THE <span className="text-red-500 underline decoration-4 underline-offset-8">ARENA</span>
               </h1>
 
@@ -449,73 +487,6 @@ export default function Arena() {
           </div>
         </div>
 
-        {/* ── DIVISION TACTICAL INTEL HUD STRIP ── */}
-        {!isLoading && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-yellow-400 flex items-center justify-center font-black text-slate-900 flex-shrink-0">
-                <Trophy className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">
-                  {activeCategory === "DEV" ? "DEV APEX MVP" : "ALGO APEX MVP"}
-                </div>
-                <div className="text-sm sm:text-base font-black truncate uppercase text-slate-900">
-                  {activeCategory === "DEV" ? topDevLeader?.full_name : topDsaLeader?.full_name}
-                </div>
-                <div className="text-[10px] font-mono font-bold text-slate-700">
-                  {activeCategory === "DEV"
-                    ? `${Math.floor(topDevLeader?.monthly_dev_score || 0)} XP`
-                    : `${Math.floor(topDsaLeader?.monthly_dsa_score || 0)} XP`}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-red-500 text-white flex items-center justify-center font-black flex-shrink-0">
-                <Target className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">
-                  {activeCategory === "DEV" ? "COMMITS LOGGED" : "DSA SOLVES"}
-                </div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 leading-none">
-                  {activeCategory === "DEV" ? totalDevCommits : totalDsaSolved}
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 uppercase">MONTHLY SECTOR TOTAL</div>
-              </div>
-            </div>
-
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-orange-500 text-white flex items-center justify-center font-black flex-shrink-0">
-                <Flame className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">MAX RAMPAGE</div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 leading-none">
-                  {Math.max(0, ...data.map((m) => m.current_streak || 0))}d
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 uppercase">LONGEST ACTIVE STREAK</div>
-              </div>
-            </div>
-
-            <div className="bg-white border-2 sm:border-4 border-slate-900 p-3 sm:p-4 brutalist-shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-slate-900 bg-[#0707f2] text-white flex items-center justify-center font-black flex-shrink-0">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] font-mono text-slate-500 uppercase font-black truncate">COMBAT VELOCITY</div>
-                <div className="text-xl sm:text-2xl font-black font-mono text-slate-900 leading-none">
-                  {activeCategory === "DEV"
-                    ? Math.round(totalDevCommits / Math.max(1, devSorted.length))
-                    : Math.round(totalDsaSolved / Math.max(1, dsaSorted.length))}
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 uppercase">AVG / WARRIOR</div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── BATTLEGROUND CONTENT ── */}
         {isLoading ? (
           <div className="text-center text-slate-900 font-black text-2xl sm:text-4xl animate-pulse uppercase tracking-widest my-20 border-4 border-slate-900 p-12 bg-white brutalist-shadow">
@@ -546,7 +517,7 @@ export default function Arena() {
                       <span className="font-mono text-[10px] text-slate-500 uppercase hidden sm:inline">RANKS #1 - #3</span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end justify-items-center pt-2">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-4 md:gap-6 items-end justify-items-center pt-3 sm:pt-6">
                       {/* #2 Master Gladiator (Left) */}
                       {(() => {
                         const m = dsaSorted[1];
@@ -555,7 +526,7 @@ export default function Arena() {
                         const gapToFirst = Math.ceil((dsaSorted[0]?.monthly_dsa_score || 0) - (m.monthly_dsa_score || 0));
                         const avatars = getCompetitorAvatars(m);
                         return (
-                          <div className="order-2 md:order-1 flex justify-center w-full">
+                          <div className="order-1 flex flex-col items-center justify-end w-full">
                             <HoloCard
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
@@ -565,54 +536,59 @@ export default function Arena() {
                               className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
-                              <div className="flex items-center justify-between">
-                                <span className="bg-slate-200 text-slate-950 font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-slate-400">
-                                  🥈 RANK #2
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="bg-slate-200 text-slate-950 font-mono font-black text-[9px] sm:text-[11px] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md border border-slate-400">
+                                  <span className="sm:hidden">🥈 #2</span>
+                                  <span className="hidden sm:inline">🥈 RANK #2</span>
                                 </span>
-                                <span className="bg-black/70 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[8px] sm:text-[10px] font-mono font-black px-1 sm:px-2 py-0.5 rounded uppercase hidden xs:inline sm:inline">
                                   RUNNER UP
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                                  <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 space-y-0.5 sm:space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-1 sm:pb-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-mono font-black text-[10px] sm:text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
-                                    <div className="font-mono text-xs text-slate-400 font-bold truncate">
+                                    <div className="font-mono text-[8px] sm:text-xs text-slate-400 font-bold truncate">
                                       @{m.handle}
                                     </div>
                                   </div>
                                   {streak && (
-                                    <span className={`flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-sm ${streak.style}`}>
+                                    <span className={`hidden sm:inline-block flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-sm ${streak.style}`}>
                                       {streak.label} ({m.current_streak}d)
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-baseline justify-between">
-                                  <span className="font-mono text-[10px] font-black text-slate-400 uppercase tracking-wider">DSA XP</span>
-                                  <span className="font-mono text-xl font-black text-slate-100">{Math.floor(m.monthly_dsa_score || 0)}</span>
+                                  <span className="font-mono text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider">DSA XP</span>
+                                  <span className="font-mono text-xs sm:text-xl font-black text-slate-100">{Math.floor(m.monthly_dsa_score || 0)}</span>
                                 </div>
-                                <div className="text-[10px] font-mono text-slate-300 flex justify-between">
+                                <div className="hidden sm:flex text-[10px] font-mono text-slate-300 justify-between">
                                   <span>SOLVED: <strong className="text-white font-bold">{m.monthly_problems_solved || 0}</strong></span>
                                   <span>LC:{m.monthly_leetcode || 0} • CF:{m.monthly_codeforces || 0}</span>
                                 </div>
                                 {gapToFirst > 0 && (
-                                  <div className="bg-slate-900/90 border border-slate-700 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-slate-300 rounded">
+                                  <div className="hidden sm:block bg-slate-900/90 border border-slate-700 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-slate-300 rounded">
                                     ▲ +{gapToFirst} XP TO DETHRONE #1
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
+                                  className="mt-0.5 sm:mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[8px] sm:text-[11px] py-1 sm:py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
-                                  VIEW DOSSIER ↗
+                                  <span className="sm:hidden">DOSSIER ↗</span>
+                                  <span className="hidden sm:inline">VIEW DOSSIER ↗</span>
                                 </Link>
                               </div>
                             </HoloCard>
+                            <div className="w-full mt-1.5 sm:mt-2.5 bg-slate-200 border-2 border-slate-900 py-0.5 sm:py-1.5 text-center font-mono font-black text-[9px] sm:text-xs text-slate-800 shadow-[1px_1px_0px_#0f172a] sm:shadow-[2px_2px_0px_#0f172a]">
+                              2ND PODIUM
+                            </div>
                           </div>
                         );
                       })()}
@@ -624,7 +600,7 @@ export default function Arena() {
                         const streak = getStreakBadge(m.current_streak || 0);
                         const avatars = getCompetitorAvatars(m);
                         return (
-                          <div className="order-1 md:order-2 flex justify-center w-full md:-translate-y-4">
+                          <div className="order-2 flex flex-col items-center justify-end w-full -translate-y-2 sm:-translate-y-5 z-10">
                             <HoloCard
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
@@ -634,51 +610,57 @@ export default function Arena() {
                               className="w-full max-w-[335px]"
                             >
                               {/* Top Bar */}
-                              <div className="flex items-center justify-between">
-                                <span className="bg-amber-400 text-slate-950 font-mono font-black text-xs px-3 py-1 rounded shadow-lg flex items-center gap-1.5 border border-amber-300">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="bg-amber-400 text-slate-950 font-mono font-black text-[9px] sm:text-xs px-1.5 sm:px-3 py-0.5 sm:py-1 rounded shadow-lg flex items-center gap-1 sm:gap-1.5 border border-amber-300">
                                   <span>👑</span>
-                                  <span>RANK #1 • APEX</span>
+                                  <span className="sm:hidden">#1 APEX</span>
+                                  <span className="hidden sm:inline">RANK #1 • APEX</span>
                                 </span>
-                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-400/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-400/50 text-[8px] sm:text-[10px] font-mono font-black px-1 sm:px-2 py-0.5 rounded uppercase hidden xs:inline sm:inline">
                                   CHAMPION
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3 space-y-1.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-1.5">
-                                  <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow flex items-center gap-1.5">
+                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-lg sm:rounded-xl p-1.5 sm:p-3 space-y-0.5 sm:space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-1 sm:pb-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-mono font-black text-[10px] sm:text-base text-white uppercase truncate drop-shadow flex items-center gap-1 sm:gap-1.5">
                                       <span>👑</span>
                                       <span className="truncate">{m.full_name}</span>
                                     </div>
-                                    <div className="font-mono text-xs text-amber-300 font-bold truncate">
+                                    <div className="font-mono text-[8px] sm:text-xs text-amber-300 font-bold truncate">
                                       @{m.handle}
                                     </div>
                                   </div>
                                   {streak && (
-                                    <span className={`flex-shrink-0 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-400/60 uppercase shadow-md ${streak.style}`}>
+                                    <span className={`hidden sm:inline-block flex-shrink-0 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-400/60 uppercase shadow-md ${streak.style}`}>
                                       {streak.label} ({m.current_streak}d)
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-baseline justify-between">
-                                  <span className="font-mono text-[10px] font-black text-amber-300 uppercase tracking-wider">APEX DSA XP</span>
-                                  <span className="font-mono text-2xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dsa_score || 0)}</span>
+                                  <span className="font-mono text-[8px] sm:text-[10px] font-black text-amber-300 uppercase tracking-wider">APEX DSA XP</span>
+                                  <span className="font-mono text-sm sm:text-2xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dsa_score || 0)}</span>
                                 </div>
-                                <div className="text-[10px] font-mono text-slate-300 flex justify-between">
+                                <div className="hidden sm:flex text-[10px] font-mono text-slate-300 justify-between">
                                   <span>SOLVED: <strong className="text-amber-300 font-bold">{m.monthly_problems_solved || 0}</strong></span>
                                   <span>LC:{m.monthly_leetcode || 0} • CF:{m.monthly_codeforces || 0}</span>
                                 </div>
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-[11px] py-1.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.01]"
+                                  className="mt-0.5 sm:mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-[8px] sm:text-[11px] py-1 sm:py-1.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.01]"
                                 >
-                                  INSPECT CHAMPION ↗
+                                  <span className="sm:hidden">DOSSIER ↗</span>
+                                  <span className="hidden sm:inline">INSPECT CHAMPION ↗</span>
                                 </Link>
                               </div>
                             </HoloCard>
+                            <div className="w-full mt-1.5 sm:mt-2.5 bg-amber-400 border-2 border-slate-900 py-1.5 sm:py-2.5 text-center font-mono font-black text-[10px] sm:text-sm text-slate-950 shadow-[1px_1px_0px_#0f172a] sm:shadow-[3px_3px_0px_#0f172a] flex items-center justify-center gap-1">
+                              <span>👑</span>
+                              <span>1ST APEX</span>
+                            </div>
                           </div>
                         );
                       })()}
@@ -691,7 +673,7 @@ export default function Arena() {
                         const gapToSecond = Math.ceil((dsaSorted[1]?.monthly_dsa_score || 0) - (m.monthly_dsa_score || 0));
                         const avatars = getCompetitorAvatars(m);
                         return (
-                          <div className="order-3 md:order-3 flex justify-center w-full">
+                          <div className="order-3 flex flex-col items-center justify-end w-full">
                             <HoloCard
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
@@ -701,54 +683,59 @@ export default function Arena() {
                               className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
-                              <div className="flex items-center justify-between">
-                                <span className="bg-amber-600 text-white font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-amber-500">
-                                  🥉 RANK #3
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="bg-amber-600 text-white font-mono font-black text-[9px] sm:text-[11px] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md border border-amber-500">
+                                  <span className="sm:hidden">🥉 #3</span>
+                                  <span className="hidden sm:inline">🥉 RANK #3</span>
                                 </span>
-                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[8px] sm:text-[10px] font-mono font-black px-1 sm:px-2 py-0.5 rounded uppercase hidden xs:inline sm:inline">
                                   PODIUM
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-950 pb-1.5">
-                                  <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 space-y-0.5 sm:space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-950 pb-1 sm:pb-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-mono font-black text-[10px] sm:text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
-                                    <div className="font-mono text-xs text-amber-200/90 font-bold truncate">
+                                    <div className="font-mono text-[8px] sm:text-xs text-amber-200/90 font-bold truncate">
                                       @{m.handle}
                                     </div>
                                   </div>
                                   {streak && (
-                                    <span className={`flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-md ${streak.style}`}>
+                                    <span className={`hidden sm:inline-block flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-md ${streak.style}`}>
                                       {streak.label} ({m.current_streak}d)
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-baseline justify-between">
-                                  <span className="font-mono text-[10px] font-black text-amber-200/70 uppercase tracking-wider">DSA XP</span>
-                                  <span className="font-mono text-xl font-black text-amber-400">{Math.floor(m.monthly_dsa_score || 0)}</span>
+                                  <span className="font-mono text-[8px] sm:text-[10px] font-black text-amber-200/70 uppercase tracking-wider">DSA XP</span>
+                                  <span className="font-mono text-xs sm:text-xl font-black text-amber-400">{Math.floor(m.monthly_dsa_score || 0)}</span>
                                 </div>
-                                <div className="text-[10px] font-mono text-slate-300 flex justify-between">
+                                <div className="hidden sm:flex text-[10px] font-mono text-slate-300 justify-between">
                                   <span>SOLVED: <strong className="text-white font-bold">{m.monthly_problems_solved || 0}</strong></span>
                                   <span>LC:{m.monthly_leetcode || 0} • CF:{m.monthly_codeforces || 0}</span>
                                 </div>
                                 {gapToSecond > 0 && (
-                                  <div className="bg-amber-950/60 border border-amber-800/60 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-amber-300 rounded">
+                                  <div className="hidden sm:block bg-amber-950/60 border border-amber-800/60 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-amber-300 rounded">
                                     ▲ +{gapToSecond} XP TO OVERTAKE #2
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
+                                  className="mt-0.5 sm:mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[8px] sm:text-[11px] py-1 sm:py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
-                                  VIEW DOSSIER ↗
+                                  <span className="sm:hidden">DOSSIER ↗</span>
+                                  <span className="hidden sm:inline">VIEW DOSSIER ↗</span>
                                 </Link>
                               </div>
                             </HoloCard>
+                            <div className="w-full mt-1.5 sm:mt-2.5 bg-amber-600 text-white border-2 border-slate-900 py-0.5 sm:py-1 text-center font-mono font-black text-[8px] sm:text-[11px] shadow-[1px_1px_0px_#0f172a] sm:shadow-[2px_2px_0px_#0f172a]">
+                              3RD PODIUM
+                            </div>
                           </div>
                         );
                       })()}
@@ -985,7 +972,7 @@ export default function Arena() {
                       <span className="font-mono text-[10px] text-slate-500 uppercase hidden sm:inline">RANKS #1 - #3</span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end justify-items-center pt-2">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-4 md:gap-6 items-end justify-items-center pt-3 sm:pt-6">
                       {/* #2 Master Gladiator (Left) */}
                       {(() => {
                         const m = devSorted[1];
@@ -994,7 +981,7 @@ export default function Arena() {
                         const gapToFirst = Math.ceil((devSorted[0]?.monthly_dev_score || 0) - (m.monthly_dev_score || 0));
                         const avatars = getCompetitorAvatars(m);
                         return (
-                          <div className="order-2 md:order-1 flex justify-center w-full">
+                          <div className="order-1 flex flex-col items-center justify-end w-full">
                             <HoloCard
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
@@ -1004,54 +991,59 @@ export default function Arena() {
                               className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
-                              <div className="flex items-center justify-between">
-                                <span className="bg-slate-200 text-slate-950 font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-slate-400">
-                                  🥈 RANK #2
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="bg-slate-200 text-slate-950 font-mono font-black text-[9px] sm:text-[11px] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md border border-slate-400">
+                                  <span className="sm:hidden">🥈 #2</span>
+                                  <span className="hidden sm:inline">🥈 RANK #2</span>
                                 </span>
-                                <span className="bg-black/70 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-slate-300 border border-slate-600/50 text-[8px] sm:text-[10px] font-mono font-black px-1 sm:px-2 py-0.5 rounded uppercase hidden xs:inline sm:inline">
                                   RUNNER UP
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                                  <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 space-y-0.5 sm:space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-1 sm:pb-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-mono font-black text-[10px] sm:text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
-                                    <div className="font-mono text-xs text-slate-400 font-bold truncate">
+                                    <div className="font-mono text-[8px] sm:text-xs text-slate-400 font-bold truncate">
                                       @{m.handle}
                                     </div>
                                   </div>
                                   {streak && (
-                                    <span className={`flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-sm ${streak.style}`}>
+                                    <span className={`hidden sm:inline-block flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-sm ${streak.style}`}>
                                       {streak.label} ({m.current_streak}d)
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-baseline justify-between">
-                                  <span className="font-mono text-[10px] font-black text-slate-400 uppercase tracking-wider">DEV XP</span>
-                                  <span className="font-mono text-xl font-black text-slate-100">{Math.floor(m.monthly_dev_score || 0)}</span>
+                                  <span className="font-mono text-[8px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider">DEV XP</span>
+                                  <span className="font-mono text-xs sm:text-xl font-black text-slate-100">{Math.floor(m.monthly_dev_score || 0)}</span>
                                 </div>
-                                <div className="text-[10px] font-mono text-slate-300 flex justify-between">
+                                <div className="hidden sm:flex text-[10px] font-mono text-slate-300 justify-between">
                                   <span>COMMITS: <strong className="text-white font-bold">{m.monthly_commits || 0}</strong></span>
                                   <span>PRS: <strong className="text-white font-bold">{m.monthly_prs || 0}</strong></span>
                                 </div>
                                 {gapToFirst > 0 && (
-                                  <div className="bg-slate-900/90 border border-slate-700 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-slate-300 rounded">
+                                  <div className="hidden sm:block bg-slate-900/90 border border-slate-700 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-slate-300 rounded">
                                     ▲ +{gapToFirst} XP TO DETHRONE #1
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
+                                  className="mt-0.5 sm:mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[8px] sm:text-[11px] py-1 sm:py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
-                                  VIEW DOSSIER ↗
+                                  <span className="sm:hidden">DOSSIER ↗</span>
+                                  <span className="hidden sm:inline">VIEW DOSSIER ↗</span>
                                 </Link>
                               </div>
                             </HoloCard>
+                            <div className="w-full mt-1.5 sm:mt-2.5 bg-slate-200 border-2 border-slate-900 py-0.5 sm:py-1.5 text-center font-mono font-black text-[9px] sm:text-xs text-slate-800 shadow-[1px_1px_0px_#0f172a] sm:shadow-[2px_2px_0px_#0f172a]">
+                              2ND PODIUM
+                            </div>
                           </div>
                         );
                       })()}
@@ -1063,7 +1055,7 @@ export default function Arena() {
                         const streak = getStreakBadge(m.current_streak || 0);
                         const avatars = getCompetitorAvatars(m);
                         return (
-                          <div className="order-1 md:order-2 flex justify-center w-full md:-translate-y-4">
+                          <div className="order-2 flex flex-col items-center justify-end w-full -translate-y-2 sm:-translate-y-5 z-10">
                             <HoloCard
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
@@ -1073,51 +1065,57 @@ export default function Arena() {
                               className="w-full max-w-[335px]"
                             >
                               {/* Top Bar */}
-                              <div className="flex items-center justify-between">
-                                <span className="bg-amber-400 text-slate-950 font-mono font-black text-xs px-3 py-1 rounded shadow-lg flex items-center gap-1.5 border border-amber-300">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="bg-amber-400 text-slate-950 font-mono font-black text-[9px] sm:text-xs px-1.5 sm:px-3 py-0.5 sm:py-1 rounded shadow-lg flex items-center gap-1 sm:gap-1.5 border border-amber-300">
                                   <span>👑</span>
-                                  <span>RANK #1 • APEX</span>
+                                  <span className="sm:hidden">#1 APEX</span>
+                                  <span className="hidden sm:inline">RANK #1 • APEX</span>
                                 </span>
-                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-400/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-400/50 text-[8px] sm:text-[10px] font-mono font-black px-1 sm:px-2 py-0.5 rounded uppercase hidden xs:inline sm:inline">
                                   CHAMPION
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-xl p-3 space-y-1.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-1.5">
-                                  <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm sm:text-base text-white uppercase truncate drop-shadow flex items-center gap-1.5">
+                              <div className="bg-slate-950/90 backdrop-blur-md border border-amber-400/40 rounded-lg sm:rounded-xl p-1.5 sm:p-3 space-y-0.5 sm:space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-400/20 pb-1 sm:pb-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-mono font-black text-[10px] sm:text-base text-white uppercase truncate drop-shadow flex items-center gap-1 sm:gap-1.5">
                                       <span>👑</span>
                                       <span className="truncate">{m.full_name}</span>
                                     </div>
-                                    <div className="font-mono text-xs text-amber-300 font-bold truncate">
+                                    <div className="font-mono text-[8px] sm:text-xs text-amber-300 font-bold truncate">
                                       @{m.handle}
                                     </div>
                                   </div>
                                   {streak && (
-                                    <span className={`flex-shrink-0 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-400/60 uppercase shadow-md ${streak.style}`}>
+                                    <span className={`hidden sm:inline-block flex-shrink-0 text-[10px] font-mono px-2 py-0.5 rounded border border-amber-400/60 uppercase shadow-md ${streak.style}`}>
                                       {streak.label} ({m.current_streak}d)
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-baseline justify-between">
-                                  <span className="font-mono text-[10px] font-black text-amber-300 uppercase tracking-wider">APEX DEV XP</span>
-                                  <span className="font-mono text-2xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dev_score || 0)}</span>
+                                  <span className="font-mono text-[8px] sm:text-[10px] font-black text-amber-300 uppercase tracking-wider">APEX DEV XP</span>
+                                  <span className="font-mono text-sm sm:text-2xl font-black text-amber-400 drop-shadow">{Math.floor(m.monthly_dev_score || 0)}</span>
                                 </div>
-                                <div className="text-[10px] font-mono text-slate-300 flex justify-between">
+                                <div className="hidden sm:flex text-[10px] font-mono text-slate-300 justify-between">
                                   <span>COMMITS: <strong className="text-amber-300 font-bold">{m.monthly_commits || 0}</strong></span>
                                   <span>PRS: <strong className="text-amber-300 font-bold">{m.monthly_prs || 0}</strong></span>
                                 </div>
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-[11px] py-1.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.01]"
+                                  className="mt-0.5 sm:mt-1 block w-full text-center bg-amber-400 hover:bg-amber-300 text-slate-950 font-mono font-black text-[8px] sm:text-[11px] py-1 sm:py-1.5 uppercase rounded border border-amber-300 transition-all shadow-[0_4px_12px_rgba(250,204,21,0.4)] hover:scale-[1.01]"
                                 >
-                                  INSPECT CHAMPION ↗
+                                  <span className="sm:hidden">DOSSIER ↗</span>
+                                  <span className="hidden sm:inline">INSPECT CHAMPION ↗</span>
                                 </Link>
                               </div>
                             </HoloCard>
+                            <div className="w-full mt-1.5 sm:mt-2.5 bg-amber-400 border-2 border-slate-900 py-1.5 sm:py-2.5 text-center font-mono font-black text-[10px] sm:text-sm text-slate-950 shadow-[1px_1px_0px_#0f172a] sm:shadow-[3px_3px_0px_#0f172a] flex items-center justify-center gap-1">
+                              <span>👑</span>
+                              <span>1ST APEX</span>
+                            </div>
                           </div>
                         );
                       })()}
@@ -1130,7 +1128,7 @@ export default function Arena() {
                         const gapToSecond = Math.ceil((devSorted[1]?.monthly_dev_score || 0) - (m.monthly_dev_score || 0));
                         const avatars = getCompetitorAvatars(m);
                         return (
-                          <div className="order-3 md:order-3 flex justify-center w-full">
+                          <div className="order-3 flex flex-col items-center justify-end w-full">
                             <HoloCard
                               image={avatars.image}
                               fallbackImage={avatars.fallback}
@@ -1140,54 +1138,59 @@ export default function Arena() {
                               className="w-full max-w-[310px]"
                             >
                               {/* Top Bar */}
-                              <div className="flex items-center justify-between">
-                                <span className="bg-amber-600 text-white font-mono font-black text-[11px] px-2.5 py-1 rounded shadow-md border border-amber-500">
-                                  🥉 RANK #3
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="bg-amber-600 text-white font-mono font-black text-[9px] sm:text-[11px] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded shadow-md border border-amber-500">
+                                  <span className="sm:hidden">🥉 #3</span>
+                                  <span className="hidden sm:inline">🥉 RANK #3</span>
                                 </span>
-                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase">
+                                <span className="bg-black/70 backdrop-blur-md text-amber-300 border border-amber-700/50 text-[8px] sm:text-[10px] font-mono font-black px-1 sm:px-2 py-0.5 rounded uppercase hidden xs:inline sm:inline">
                                   PODIUM
                                 </span>
                               </div>
 
                               {/* Unified Card Details Container */}
-                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-xl p-2.5 space-y-1.5 shadow-2xl">
-                                <div className="flex items-center justify-between border-b border-amber-950 pb-1.5">
-                                  <div className="min-w-0">
-                                    <div className="font-mono font-black text-sm text-white uppercase truncate drop-shadow">
+                              <div className="bg-slate-950/85 backdrop-blur-md border border-amber-900/60 rounded-lg sm:rounded-xl p-1.5 sm:p-2.5 space-y-0.5 sm:space-y-1.5 shadow-2xl">
+                                <div className="flex items-center justify-between border-b border-amber-950 pb-1 sm:pb-1.5">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-mono font-black text-[10px] sm:text-sm text-white uppercase truncate drop-shadow">
                                       {m.full_name}
                                     </div>
-                                    <div className="font-mono text-xs text-amber-200/90 font-bold truncate">
+                                    <div className="font-mono text-[8px] sm:text-xs text-amber-200/90 font-bold truncate">
                                       @{m.handle}
                                     </div>
                                   </div>
                                   {streak && (
-                                    <span className={`flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-md ${streak.style}`}>
+                                    <span className={`hidden sm:inline-block flex-shrink-0 text-[9px] font-mono px-2 py-0.5 rounded border border-slate-900 uppercase shadow-md ${streak.style}`}>
                                       {streak.label} ({m.current_streak}d)
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-baseline justify-between">
-                                  <span className="font-mono text-[10px] font-black text-amber-200/70 uppercase tracking-wider">DEV XP</span>
-                                  <span className="font-mono text-xl font-black text-amber-400">{Math.floor(m.monthly_dev_score || 0)}</span>
+                                  <span className="font-mono text-[8px] sm:text-[10px] font-black text-amber-200/70 uppercase tracking-wider">DEV XP</span>
+                                  <span className="font-mono text-xs sm:text-xl font-black text-amber-400">{Math.floor(m.monthly_dev_score || 0)}</span>
                                 </div>
-                                <div className="text-[10px] font-mono text-slate-300 flex justify-between">
+                                <div className="hidden sm:flex text-[10px] font-mono text-slate-300 justify-between">
                                   <span>COMMITS: <strong className="text-white font-bold">{m.monthly_commits || 0}</strong></span>
                                   <span>PRS: <strong className="text-white font-bold">{m.monthly_prs || 0}</strong></span>
                                 </div>
                                 {gapToSecond > 0 && (
-                                  <div className="bg-amber-950/60 border border-amber-800/60 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-amber-300 rounded">
+                                  <div className="hidden sm:block bg-amber-950/60 border border-amber-800/60 py-0.5 px-1 text-center font-mono text-[9px] font-bold text-amber-300 rounded">
                                     ▲ +{gapToSecond} XP TO OVERTAKE #2
                                   </div>
                                 )}
                                 <Link
                                   to={`/profile/${m.handle}`}
-                                  className="mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[11px] py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
+                                  className="mt-0.5 sm:mt-1 block w-full text-center bg-white/10 hover:bg-white/20 text-white font-mono font-black text-[8px] sm:text-[11px] py-1 sm:py-1.5 uppercase rounded border border-white/20 transition-all hover:scale-[1.01]"
                                 >
-                                  VIEW DOSSIER ↗
+                                  <span className="sm:hidden">DOSSIER ↗</span>
+                                  <span className="hidden sm:inline">VIEW DOSSIER ↗</span>
                                 </Link>
                               </div>
                             </HoloCard>
+                            <div className="w-full mt-1.5 sm:mt-2.5 bg-amber-600 text-white border-2 border-slate-900 py-0.5 sm:py-1 text-center font-mono font-black text-[8px] sm:text-[11px] shadow-[1px_1px_0px_#0f172a] sm:shadow-[2px_2px_0px_#0f172a]">
+                              3RD PODIUM
+                            </div>
                           </div>
                         );
                       })()}
@@ -1591,92 +1594,344 @@ export default function Arena() {
         )}
       </main>
 
-      {/* ── RANK MECHANISM MODAL OVERLAY ── */}
+      {/* ── RANK MECHANISM MODAL OVERLAY (NO SCROLL ALL-IN-ONE VIEW AT TOP) ── */}
       <AnimatePresence>
         {isRankModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-3 sm:p-6 pt-4 sm:pt-10 pb-12 bg-slate-900/85 backdrop-blur-sm overflow-y-auto">
-            {/* Persistent Floating Close Button Outside Modal Box */}
-            <button
-              onClick={() => setIsRankModalOpen(false)}
-              className="fixed top-3 right-3 sm:top-6 sm:right-6 bg-red-600 hover:bg-slate-900 text-white font-mono font-black text-base sm:text-lg px-3 py-1.5 sm:px-4 sm:py-2 border-2 sm:border-4 border-slate-900 brutalist-shadow z-50 flex items-center gap-1.5 cursor-pointer active:translate-y-0.5"
-            >
-              <span>✕</span>
-              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider">CLOSE</span>
-            </button>
-
+          <div
+            onClick={() => setIsRankModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none touch-none"
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="bg-white border-4 border-slate-900 brutalist-shadow max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5 sm:p-8 relative font-display text-slate-900 my-0 mt-2 sm:mt-4"
+              exit={{ opacity: 0, scale: 0.96, y: -20 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="bg-white border-4 border-slate-900 brutalist-shadow max-w-3xl w-full p-3.5 sm:p-5 relative font-display text-slate-900 overflow-hidden flex flex-col gap-2.5 sm:gap-3"
             >
               {/* Modal Header */}
-              <div className="flex items-center gap-3 border-b-4 border-slate-900 pb-4 mb-6 pr-12">
-                <span className="text-3xl">⚔️</span>
-                <div>
-                  <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">ARENA RANK MECHANISM</h2>
-                  <p className="font-mono text-xs text-slate-600">HOW XP SCORES & COMPETITIVE RANKS ARE CALCULATED</p>
+              <div className="flex items-center justify-between border-b-2 sm:border-b-4 border-slate-900 pb-2 sm:pb-2.5">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <span className="text-xl sm:text-2xl">⚔️</span>
+                  <div>
+                    <h2 className="text-base sm:text-xl font-black uppercase tracking-tight leading-none text-slate-900">
+                      ARENA RANK MECHANISM
+                    </h2>
+                    <p className="font-mono text-[9px] sm:text-[11px] text-slate-600 mt-0.5">
+                      XP FORMULAS, BATTLE TIERS & STREAKS
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsRankModalOpen(false)}
+                  className="bg-red-600 hover:bg-slate-900 text-white font-mono font-black text-[11px] sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 cursor-pointer active:translate-y-0.5 transition-colors"
+                >
+                  <span>✕</span>
+                  <span className="font-bold">CLOSE</span>
+                </button>
+              </div>
+
+              {/* 1. Division XP Formulas (2 Symmetrical Columns) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+                <div className="bg-red-50 border-2 border-red-900/30 p-2 sm:p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono font-black text-[11px] sm:text-xs text-red-900 flex items-center gap-1">
+                      <span>⚔️</span> ALGORITHMS (DSA)
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-red-700 bg-red-100 px-1 border border-red-300">
+                      1 Solved = 1 XP
+                    </span>
+                  </div>
+                  <p className="font-mono text-[10px] sm:text-[11px] text-slate-700 leading-snug">
+                    Aggregated monthly problem solves across LeetCode, Codeforces, CodeChef & GeeksforGeeks profiles.
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-900/30 p-2 sm:p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono font-black text-[11px] sm:text-xs text-blue-900 flex items-center gap-1">
+                      <span>🛠️</span> DEVELOPMENT (DEV)
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-blue-700 bg-blue-100 px-1 border border-blue-300">
+                      Commits + PRs
+                    </span>
+                  </div>
+                  <p className="font-mono text-[10px] sm:text-[11px] text-slate-700 leading-snug">
+                    Aggregated monthly GitHub activity count: total verified commits + merged pull requests.
+                  </p>
                 </div>
               </div>
 
-              {/* Modal Content Sections */}
-              <div className="flex flex-col gap-6 text-sm">
-                {/* 1. Score Formulas */}
-                <div className="bg-slate-50 border-2 border-slate-900 p-4">
-                  <h3 className="font-black text-base uppercase text-slate-900 mb-2 flex items-center gap-2">
-                    <span>⚡ 1. DIVISION XP FORMULAS</span>
-                  </h3>
-                  <div className="space-y-2 font-mono text-xs">
-                    <div className="bg-red-100 border border-red-900 p-2.5 text-red-950">
-                      <div className="font-bold">⚔️ ALGORITHMS (DSA) SCORE:</div>
-                      <div>Total Problems Solved aggregated across all platform profiles (LeetCode + Codeforces + CodeChef + GFG) in the current month.</div>
-                    </div>
-                    <div className="bg-blue-100 border border-blue-900 p-2.5 text-blue-950">
-                      <div className="font-bold">🛠️ DEVELOPMENT SCORE:</div>
-                      <div>Aggregated monthly GitHub activity count: <span className="font-bold">Total Commits + Total Pull Requests</span>.</div>
-                    </div>
+              {/* 2. Battle Rank Titles (Horizontal Grid Strip) */}
+              <div className="border-2 border-slate-900 bg-slate-50 p-2 sm:p-2.5">
+                <div className="font-mono font-black text-[10px] sm:text-[11px] uppercase text-slate-900 mb-1.5 flex items-center gap-1.5">
+                  <span>👑</span> BATTLE RANK TIERS
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 font-mono text-[10px] sm:text-[11px] text-center font-black">
+                  <div className="bg-black text-[#FACC15] p-1.5 border border-slate-900">
+                    #1 APEX
+                  </div>
+                  <div className="bg-slate-900 text-white p-1.5 border border-slate-900">
+                    #2 GLADIATOR
+                  </div>
+                  <div className="bg-amber-900 text-amber-200 p-1.5 border border-slate-900">
+                    #3 WARRIOR
+                  </div>
+                  <div className="bg-[#0707f2] text-white p-1.5 border border-slate-900">
+                    #4-5 DIAMOND
+                  </div>
+                  <div className="bg-slate-200 text-slate-800 p-1.5 border border-slate-900 col-span-2 sm:col-span-1">
+                    #6+ CONTENDER
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Streaks, Radar & Monthly Reset */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+                <div className="border-2 border-slate-900 bg-slate-50 p-2 sm:p-2.5">
+                  <div className="font-mono font-black text-[10px] sm:text-[11px] uppercase text-slate-900 mb-1 flex items-center gap-1">
+                    <span>📡</span> RADAR & ACTIVE STREAKS
+                  </div>
+                  <div className="flex flex-wrap gap-1 font-mono text-[9px] sm:text-[10px]">
+                    <span className="bg-white border border-slate-300 px-1.5 py-0.5 font-bold text-slate-800">
+                      📡 Radar: XP gap to next rank
+                    </span>
+                    <span className="bg-orange-100 border border-orange-300 px-1.5 py-0.5 font-bold text-orange-900">
+                      🔥 On Fire: 3d+
+                    </span>
+                    <span className="bg-yellow-100 border border-yellow-300 px-1.5 py-0.5 font-bold text-yellow-900">
+                      ⚡ Unstoppable: 7d+
+                    </span>
+                    <span className="bg-red-100 border border-red-300 px-1.5 py-0.5 font-bold text-red-900">
+                      💥 Rampage: 14d+
+                    </span>
                   </div>
                 </div>
 
-                {/* 2. Rank Titles */}
-                <div className="bg-slate-50 border-2 border-slate-900 p-4">
-                  <h3 className="font-black text-base uppercase text-slate-900 mb-2 flex items-center gap-2">
-                    <span>👑 2. BATTLE RANK TITLES</span>
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-xs">
-                    <div className="bg-black text-[#FACC15] p-2 border border-slate-900 font-bold">RANK #1: 👑 APEX LEGEND</div>
-                    <div className="bg-slate-900 text-white p-2 border border-slate-900 font-bold">RANK #2: ⚔️ MASTER GLADIATOR</div>
-                    <div className="bg-amber-900 text-amber-200 p-2 border border-slate-900 font-bold">RANK #3: 🥉 MASTER WARRIOR</div>
-                    <div className="bg-[#0707f2] text-white p-2 border border-slate-900 font-bold">RANK #4-5: 💎 DIAMOND WARRIOR</div>
-                    <div className="bg-slate-200 text-slate-800 p-2 border border-slate-900 font-bold col-span-1 sm:col-span-2">RANK #6+: ⚡ CONTENDER</div>
+                <div className="border-2 border-slate-900 bg-[#FACC15] p-2 sm:p-2.5 flex items-center gap-2 text-slate-900">
+                  <span className="text-xl flex-shrink-0">⏳</span>
+                  <div className="font-mono text-[10px] sm:text-[11px] leading-tight">
+                    <span className="font-black uppercase block">MONTHLY RESET AT 00:00 UTC</span>
+                    <span>Scores reset automatically each month. Standings lock in for eternal bragging rights!</span>
                   </div>
-                </div>
-
-                {/* 3. Threat Radar & Streaks */}
-                <div className="bg-slate-50 border-2 border-slate-900 p-4">
-                  <h3 className="font-black text-base uppercase text-slate-900 mb-2 flex items-center gap-2">
-                    <span>📡 3. THREAT RADAR & STREAKS</span>
-                  </h3>
-                  <ul className="list-disc list-inside space-y-1.5 font-mono text-xs text-slate-700">
-                    <li><span className="font-bold text-slate-900">THREAT RADAR:</span> Shows the exact additional XP required to overtake the contender directly ahead of you.</li>
-                    <li><span className="font-bold text-slate-900 font-mono">💥 RAMPAGE (14+ Days):</span> Active daily coding streak of 14 consecutive days.</li>
-                    <li><span className="font-bold text-slate-900 font-mono">⚡ UNSTOPPABLE (7+ Days):</span> Active daily coding streak of 7 consecutive days.</li>
-                    <li><span className="font-bold text-slate-900 font-mono">🔥 ON FIRE (3+ Days):</span> Active daily coding streak of 3 consecutive days.</li>
-                  </ul>
-                </div>
-
-                {/* Monthly Reset Info */}
-                <div className="bg-[#FACC15] border-2 border-slate-900 p-3 text-slate-900 font-mono text-xs font-bold flex items-center gap-2">
-                  <span className="text-xl">⏳</span>
-                  <div>Arena scores reset automatically at the end of every calendar month. Champion titles are awarded based on final standings!</div>
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="mt-6 pt-4 border-t-2 border-slate-900 flex justify-end">
+              <div className="pt-2 sm:pt-2.5 border-t-2 border-slate-900 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-slate-500 hidden sm:inline">
+                  Click outside or press Close to dismiss
+                </span>
                 <button
                   onClick={() => setIsRankModalOpen(false)}
-                  className="bg-slate-900 text-white font-mono font-black text-xs px-6 py-2.5 border-2 border-slate-900 brutalist-shadow-sm hover:bg-[#0707f2] transition-colors cursor-pointer"
+                  className="w-full sm:w-auto bg-slate-900 text-white font-mono font-black text-xs px-5 py-1.5 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm hover:bg-[#0707f2] transition-colors cursor-pointer text-center ml-auto active:translate-y-0.5"
+                >
+                  GOT IT, WARRIOR!
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MONTHLY WINNERS (TOP 3) MODAL OVERLAY ── */}
+      <AnimatePresence>
+        {isWinnersModalOpen && (
+          <div
+            onClick={() => setIsWinnersModalOpen(false)}
+            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none touch-none"
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -20 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="bg-white border-4 border-slate-900 brutalist-shadow max-w-4xl w-full p-3.5 sm:p-5 relative font-display text-slate-900 overflow-hidden flex flex-col gap-2.5 sm:gap-3"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b-2 sm:border-b-4 border-slate-900 pb-2 sm:pb-2.5">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <span className="text-xl sm:text-2xl">🏆</span>
+                  <div>
+                    <h2 className="text-base sm:text-xl font-black uppercase tracking-tight leading-none text-slate-900">
+                      ARENA PODIUM WINNERS
+                    </h2>
+                    <p className="font-mono text-[9px] sm:text-[11px] text-slate-600 mt-0.5">
+                      EACH MONTH'S TOP 3 DIVISION CHAMPIONS
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsWinnersModalOpen(false)}
+                  className="bg-red-600 hover:bg-slate-900 text-white font-mono font-black text-[11px] sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 cursor-pointer active:translate-y-0.5 transition-colors"
+                >
+                  <span>✕</span>
+                  <span className="font-bold">CLOSE</span>
+                </button>
+              </div>
+
+              {/* Month Selector Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  onClick={() => setSelectedWinnersMonth("CURRENT")}
+                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                    selectedWinnersMonth === "CURRENT"
+                      ? "bg-[#FACC15] text-slate-950"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  ⚡ {monthName} 2026 (LIVE)
+                </button>
+                <button
+                  onClick={() => setSelectedWinnersMonth("OCTOBER")}
+                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                    selectedWinnersMonth === "OCTOBER"
+                      ? "bg-[#FACC15] text-slate-950"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  OCTOBER 2026
+                </button>
+                <button
+                  onClick={() => setSelectedWinnersMonth("SEPTEMBER")}
+                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                    selectedWinnersMonth === "SEPTEMBER"
+                      ? "bg-[#FACC15] text-slate-950"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  SEPTEMBER 2026
+                </button>
+              </div>
+
+              {/* Top 3 Podium Lists Grid (DSA & DEV side by side) */}
+              {selectedWinnersMonth === "CURRENT" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
+                  {/* Algorithms Top 3 Column */}
+                  <div className="bg-red-50/60 border-2 border-red-900/30 p-2 sm:p-2.5">
+                    <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-red-200">
+                      <span className="font-mono font-black text-[11px] sm:text-xs text-red-900 flex items-center gap-1.5">
+                        <span>⚔️</span> ALGORITHMS (DSA) TOP 3
+                      </span>
+                      <span className="font-mono text-[9px] font-bold text-red-700 bg-red-100 px-1 border border-red-300 uppercase">
+                        SOLVES PODIUM
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {dsaSorted.slice(0, 3).map((member, idx) => (
+                        <Link
+                          key={member.member_id}
+                          to={`/member/${member.handle}`}
+                          onClick={() => setIsWinnersModalOpen(false)}
+                          className="flex items-center justify-between p-1.5 sm:p-2 border-2 border-slate-900 bg-white hover:bg-slate-50 transition-colors brutalist-shadow-sm group"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            <div className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-mono font-black text-[10px] sm:text-xs border border-slate-900 flex-shrink-0 ${
+                              idx === 0 ? "bg-[#FACC15] text-slate-950" : idx === 1 ? "bg-slate-300 text-slate-900" : "bg-amber-700 text-white"
+                            }`}>
+                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
+                            </div>
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 border border-slate-900 bg-slate-100 overflow-hidden flex-shrink-0">
+                              <AvatarImage url={member.avatar_url} handle={member.handle} name={member.full_name} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs sm:text-sm font-black uppercase text-slate-900 truncate group-hover:text-red-600 transition-colors">
+                                {member.full_name}
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] font-mono text-slate-500 truncate">
+                                {member.monthly_problems_solved || 0} Solved • LC: {member.monthly_leetcode || 0}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0 pl-2">
+                            <div className="text-sm sm:text-base font-black font-mono text-slate-900 leading-none">
+                              {Math.floor(member.monthly_dsa_score || 0)}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-red-600 uppercase mt-0.5">
+                              DSA XP
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Development Top 3 Column */}
+                  <div className="bg-blue-50/60 border-2 border-blue-900/30 p-2 sm:p-2.5">
+                    <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-blue-200">
+                      <span className="font-mono font-black text-[11px] sm:text-xs text-blue-900 flex items-center gap-1.5">
+                        <span>🛠️</span> DEVELOPMENT (DEV) TOP 3
+                      </span>
+                      <span className="font-mono text-[9px] font-bold text-blue-700 bg-blue-100 px-1 border border-blue-300 uppercase">
+                        COMMITS PODIUM
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {devSorted.slice(0, 3).map((member, idx) => (
+                        <Link
+                          key={member.member_id}
+                          to={`/member/${member.handle}`}
+                          onClick={() => setIsWinnersModalOpen(false)}
+                          className="flex items-center justify-between p-1.5 sm:p-2 border-2 border-slate-900 bg-white hover:bg-slate-50 transition-colors brutalist-shadow-sm group"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            <div className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-mono font-black text-[10px] sm:text-xs border border-slate-900 flex-shrink-0 ${
+                              idx === 0 ? "bg-[#FACC15] text-slate-950" : idx === 1 ? "bg-slate-300 text-slate-900" : "bg-amber-700 text-white"
+                            }`}>
+                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
+                            </div>
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 border border-slate-900 bg-slate-100 overflow-hidden flex-shrink-0">
+                              <AvatarImage url={member.avatar_url} handle={member.handle} name={member.full_name} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs sm:text-sm font-black uppercase text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                                {member.full_name}
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] font-mono text-slate-500 truncate">
+                                {member.monthly_commits || 0} Commits • PRs: {member.monthly_prs || 0}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0 pl-2">
+                            <div className="text-sm sm:text-base font-black font-mono text-slate-900 leading-none">
+                              {Math.floor(member.monthly_dev_score || 0)}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-blue-600 uppercase mt-0.5">
+                              DEV XP
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-100 border-2 border-slate-900 p-4 sm:p-6 text-center flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📜</span>
+                  <div className="font-mono text-xs sm:text-sm font-black uppercase text-slate-900">
+                    SEASON ARCHIVE: {selectedWinnersMonth} 2026
+                  </div>
+                  <p className="font-mono text-[10px] sm:text-xs text-slate-600 max-w-md">
+                    Historical monthly snapshots are archived at the end of each season. Active combat tracking is live for {monthName} 2026!
+                  </p>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="pt-2 sm:pt-2.5 border-t-2 border-slate-900 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-slate-500 hidden sm:inline">
+                  Click on any champion to view their complete battle dossier
+                </span>
+                <button
+                  onClick={() => setIsWinnersModalOpen(false)}
+                  className="w-full sm:w-auto bg-slate-900 text-white font-mono font-black text-xs px-5 py-1.5 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm hover:bg-[#0707f2] transition-colors cursor-pointer text-center ml-auto active:translate-y-0.5"
                 >
                   GOT IT, WARRIOR!
                 </button>
