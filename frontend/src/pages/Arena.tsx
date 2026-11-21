@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import SEO from "../components/SEO";
@@ -36,7 +36,6 @@ export default function Arena() {
   const [selectedTier, setSelectedTier] = useState<TierFilter>("ALL");
   const [dsaPage, setDsaPage] = useState(1);
   const [devPage, setDevPage] = useState(1);
-  const battlegroundRef = useRef<HTMLDivElement>(null);
   const dsaRosterRef = useRef<HTMLDivElement>(null);
   const devRosterRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 8;
@@ -83,10 +82,10 @@ export default function Arena() {
   }, [isAnyModalOpen]);
 
   const now = new Date();
-  const monthName = now.toLocaleString("default", { month: "long" }).toUpperCase();
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const monthName = now.toLocaleString("default", { month: "long", timeZone: "UTC" }).toUpperCase();
+  const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
   const diff = endOfMonth.getTime() - now.getTime();
-  const daysRemaining = Math.ceil(diff / (1000 * 3600 * 24));
+  const daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 3600 * 24)));
 
   const dsaSorted = useMemo(() => {
     return [...data]
@@ -110,25 +109,28 @@ export default function Arena() {
       .map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [data]);
 
-  const filterList = (list: (MonthlyLeaderboardEntry & { rank: number })[]) => {
-    return list.filter((member) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        member.full_name.toLowerCase().includes(q) ||
-        (member.handle && member.handle.toLowerCase().includes(q));
+  const filterList = useCallback(
+    (list: (MonthlyLeaderboardEntry & { rank: number })[]) => {
+      return list.filter((member) => {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch =
+          !q ||
+          member.full_name.toLowerCase().includes(q) ||
+          (member.handle && member.handle.toLowerCase().includes(q));
 
-      if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
 
-      if (selectedTier === "APEX") return member.rank <= 3;
-      if (selectedTier === "DIAMOND") return member.rank > 3 && member.rank <= 10;
-      if (selectedTier === "CONTENDER") return member.rank > 10;
-      return true;
-    });
-  };
+        if (selectedTier === "APEX") return member.rank <= 3;
+        if (selectedTier === "DIAMOND") return member.rank > 3 && member.rank <= 10;
+        if (selectedTier === "CONTENDER") return member.rank > 10;
+        return true;
+      });
+    },
+    [searchQuery, selectedTier]
+  );
 
-  const filteredDsa = useMemo(() => filterList(dsaSorted), [dsaSorted, searchQuery, selectedTier]);
-  const filteredDev = useMemo(() => filterList(devSorted), [devSorted, searchQuery, selectedTier]);
+  const filteredDsa = useMemo(() => filterList(dsaSorted), [dsaSorted, filterList]);
+  const filteredDev = useMemo(() => filterList(devSorted), [devSorted, filterList]);
 
   useEffect(() => {
     setDsaPage(1);
@@ -365,7 +367,7 @@ export default function Arena() {
         )}
 
         {/* ── TOURNAMENT CONTROL HUB & SEARCH CONSOLE ── */}
-        <div id="division-battleground" ref={battlegroundRef} className="scroll-mt-20 mb-8 sm:mb-10">
+        <div id="division-battleground" className="scroll-mt-20 mb-8 sm:mb-10">
           <div className="border-4 border-slate-900 bg-white brutalist-shadow p-4 sm:p-6 space-y-4">
             {/* Row 1: Division Selector & Search */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b-2 border-slate-900">
@@ -743,7 +745,7 @@ export default function Arena() {
 
                 {/* ── ALGORITHMS DIVISION BATTLE ROSTER ── */}
                 {(() => {
-                  const isPodiumActive = !searchQuery && selectedTier === "ALL";
+                  const isPodiumActive = !searchQuery && selectedTier === "ALL" && dsaSorted.length >= 3;
                   const rosterList = isPodiumActive ? filteredDsa.filter((m) => m.rank > 3) : filteredDsa;
                   const totalPages = Math.max(1, Math.ceil(rosterList.length / itemsPerPage));
                   const currentPage = Math.min(dsaPage, totalPages);
@@ -1198,7 +1200,7 @@ export default function Arena() {
 
                 {/* ── DEVELOPMENT DIVISION BATTLE ROSTER ── */}
                 {(() => {
-                  const isPodiumActive = !searchQuery && selectedTier === "ALL";
+                  const isPodiumActive = !searchQuery && selectedTier === "ALL" && devSorted.length >= 3;
                   const rosterList = isPodiumActive ? filteredDev.filter((m) => m.rank > 3) : filteredDev;
                   const totalPages = Math.max(1, Math.ceil(rosterList.length / itemsPerPage));
                   const currentPage = Math.min(devPage, totalPages);

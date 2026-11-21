@@ -52,51 +52,78 @@ export interface LeaderboardEntry {
 export async function getDailyLeaderboard(): Promise<LeaderboardEntry[]> {
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD" UTC
 
-  const { data, error } = await supabase
-    .from("activity_snapshots")
-    .select(
-      `
+  const selectFields = `
+    id,
+    snapshot_date,
+    total_score,
+    active_days,
+    current_streak,
+    dsa_score,
+    dev_score,
+    github_prs,
+    github_issues,
+    leetcode_total,
+    leetcode_easy,
+    leetcode_medium,
+    leetcode_hard,
+    codeforces_solved,
+    codechef_solved,
+    gfg_solved,
+    github_contributions,
+    raw_github_commits,
+    valid_github_commits,
+    codeforces_rating,
+    codechef_rating,
+    hackerrank_badges,
+    contests_attended,
+    members (
       id,
-      snapshot_date,
-      total_score,
-      active_days,
-      current_streak,
-      dsa_score,
-      dev_score,
-      github_prs,
-      github_issues,
-      leetcode_total,
-      leetcode_easy,
-      leetcode_medium,
-      leetcode_hard,
-      codeforces_solved,
-      codechef_solved,
-      gfg_solved,
-      github_contributions,
-      raw_github_commits,
-      valid_github_commits,
-      codeforces_rating,
-      codechef_rating,
-      hackerrank_badges,
-      contests_attended,
-      members (
-        id,
-        full_name,
-        roll_number,
-        avatar_url,
-        github_handle
-      )
-    `
+      full_name,
+      roll_number,
+      avatar_url,
+      github_handle
     )
+  `;
+
+  // 1. Try today's snapshot
+  const { data: todayData, error: todayError } = await supabase
+    .from("activity_snapshots")
+    .select(selectFields)
     .eq("snapshot_date", today)
     .order("total_score", { ascending: false });
 
-  if (error) {
-    console.error("[codexApi] getDailyLeaderboard error:", error.message);
-    throw new Error(error.message);
+  if (todayError) {
+    console.error("[codexApi] getDailyLeaderboard error:", todayError.message);
   }
 
-  return (data ?? []) as unknown as LeaderboardEntry[];
+  if (todayData && todayData.length > 0) {
+    return todayData as unknown as LeaderboardEntry[];
+  }
+
+  // 2. Fallback: If today's sync hasn't run yet, fetch the most recent completed snapshot date
+  const { data: latestSnap, error: latestError } = await supabase
+    .from("activity_snapshots")
+    .select("snapshot_date")
+    .order("snapshot_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError || !latestSnap?.snapshot_date) {
+    return [];
+  }
+
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("activity_snapshots")
+    .select(selectFields)
+    .eq("snapshot_date", latestSnap.snapshot_date)
+    .order("total_score", { ascending: false });
+
+  if (fallbackError) {
+    console.error("[codexApi] getDailyLeaderboard fallback error:", fallbackError.message);
+    return [];
+  }
+
+  return (fallbackData ?? []) as unknown as LeaderboardEntry[];
 }
 
 // ── Club Activity Map ──────────────────────────────────────────────────────
@@ -303,11 +330,16 @@ export interface MemberProfile {
 }
 
 /**
- * Fetches a member profile by github_handle (tried first) or roll_number,
+ * Fetches a member profile by github_handle (tried first), roll_number, or UUID id,
  * along with their most recent activity_snapshot row.
  */
 export async function getMemberProfile(handle: string): Promise<MemberProfile | null> {
-  for (const field of ["github_handle", "roll_number"] as const) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(handle);
+  const searchFields: ("github_handle" | "roll_number" | "id")[] = isUuid
+    ? ["id", "github_handle", "roll_number"]
+    : ["github_handle", "roll_number"];
+
+  for (const field of searchFields) {
     const { data: members, error } = await supabase
       .from("members")
       .select(
@@ -372,6 +404,40 @@ export interface MonthlyLeaderboardEntry {
   current_streak: number;
 }
 
+interface MonthlySnapshotRow {
+  member_id: string;
+  snapshot_date: string;
+  total_score: number;
+  dsa_score: number;
+  dev_score: number;
+  leetcode_total: number;
+  codeforces_solved: number;
+  codechef_solved: number;
+  gfg_solved: number;
+  github_contributions: number;
+  raw_github_commits: number;
+  valid_github_commits: number;
+  github_prs: number;
+  current_streak: number;
+}
+
+const getCommits = (s: MonthlySnapshotRow) => s.valid_github_commits || s.github_contributions || 0;
+
+const processPlatform = (pVal: number | undefined | null, cVal: number | undefined | null) => {
+  const p = pVal || 0;
+  const c = cVal || 0;
+  const delta = Math.max(0, c - p);
+  
+  // Backfill protection: If jumping from 0 to a large number in one day (e.g. adding an existing handle),
+  // cap initial daily surge to 10 rather than completely zeroing genuine first-day progress.
+  if (p === 0 && delta > 10) return 10;
+  
+  // Hard cap for daily spam or extreme glitches
+  if (delta > 30) return 30;
+  
+  return delta;
+};
+
 export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: number): Promise<MonthlyLeaderboardEntry[]> {
   try {
     const now = new Date();
@@ -400,7 +466,7 @@ export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: n
 
     // Step C: Query activity_snapshots with pagination to avoid 1,000-row PostgREST ceiling
     const PAGE_SIZE = 1000;
-    let snapshots: any[] = [];
+    let snapshots: MonthlySnapshotRow[] = [];
     let from = 0;
     let hasMore = true;
 
@@ -435,7 +501,7 @@ export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: n
       }
 
       if (pageData && pageData.length > 0) {
-        snapshots = snapshots.concat(pageData);
+        snapshots = snapshots.concat(pageData as unknown as MonthlySnapshotRow[]);
         if (pageData.length < PAGE_SIZE) {
           hasMore = false;
         } else {
@@ -447,7 +513,7 @@ export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: n
     }
 
     // Step D: Group by member_id
-    const snapshotsByMember = new Map<string, any[]>();
+    const snapshotsByMember = new Map<string, MonthlySnapshotRow[]>();
     for (const snap of (snapshots || [])) {
       if (!snapshotsByMember.has(snap.member_id)) {
         snapshotsByMember.set(snap.member_id, []);
@@ -484,11 +550,6 @@ export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: n
       const baseline = memberSnaps[0];
       const latest = memberSnaps[memberSnaps.length - 1];
 
-
-        
-      const getCommits = (s: any) => s.valid_github_commits || s.github_contributions || 0;
-
-
       // If only 1 snapshot exists in this month (e.g. baseline is latest), delta is 0
       const isSingleSnap = memberSnaps.length <= 1;
 
@@ -501,21 +562,6 @@ export async function getMonthlyLeaderboard(targetYear?: number, targetMonth?: n
         for (let i = 1; i < memberSnaps.length; i++) {
           const prev = memberSnaps[i - 1];
           const curr = memberSnaps[i];
-          
-          const processPlatform = (pVal: number | undefined | null, cVal: number | undefined | null) => {
-            const p = pVal || 0;
-            const c = cVal || 0;
-            const delta = Math.max(0, c - p);
-            
-            // Backfill protection: If jumping from 0 to a large number in one day (e.g. adding an existing handle),
-            // cap initial daily surge to 10 rather than completely zeroing genuine first-day progress.
-            if (p === 0 && delta > 10) return 10;
-            
-            // Hard cap for daily spam or extreme glitches
-            if (delta > 30) return 30;
-            
-            return delta;
-          };
 
           const lcDelta = processPlatform(prev.leetcode_total, curr.leetcode_total);
           const cfDelta = processPlatform(prev.codeforces_solved, curr.codeforces_solved);

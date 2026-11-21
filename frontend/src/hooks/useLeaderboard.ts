@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { getDailyLeaderboard, getClubStatsSummary, getClubGithubHeatmap } from "../services/codexApi";
-import type { ClubStatsSummary, ActivityDay } from "../services/codexApi";
+import { getDailyLeaderboard, getClubStatsSummary } from "../services/codexApi";
+import type { ClubStatsSummary } from "../services/codexApi";
 
 export interface LeaderboardMember {
   id: string;
@@ -31,7 +31,6 @@ export type SortMode = 'GLOBAL' | 'DSA' | 'DEV';
 export function useLeaderboard() {
   const [rawMembers, setRawMembers] = useState<LeaderboardMember[]>([]);
   const [clubSummary, setClubSummary] = useState<ClubStatsSummary | null>(null);
-  const [githubHeatmap, setGithubHeatmap] = useState<ActivityDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -45,10 +44,9 @@ export function useLeaderboard() {
       try {
         setLoading(true);
         setError(null);
-        const [lbData, statsData, heatmapData] = await Promise.all([
+        const [lbData, statsData] = await Promise.all([
           getDailyLeaderboard(),
           getClubStatsSummary(),
-          getClubGithubHeatmap().catch(() => [])
         ]);
 
         if (!cancelled) {
@@ -100,7 +98,6 @@ export function useLeaderboard() {
 
           setRawMembers(mappedMembers);
           setClubSummary(statsData);
-          setGithubHeatmap(heatmapData);
         }
       } catch (err: unknown) {
         if (!cancelled) {
@@ -154,7 +151,6 @@ export function useLeaderboard() {
   return {
     members,
     clubSummary,
-    githubHeatmap,
     loading,
     error,
     searchQuery,
