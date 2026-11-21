@@ -30,6 +30,8 @@ export default function Arena() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<ArenaCategory>("DSA");
   const [isRankModalOpen, setIsRankModalOpen] = useState(false);
+  const [isWinnersModalOpen, setIsWinnersModalOpen] = useState(false);
+  const [selectedWinnersMonth, setSelectedWinnersMonth] = useState<string>("CURRENT");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<TierFilter>("ALL");
   const [dsaPage, setDsaPage] = useState(1);
@@ -54,9 +56,9 @@ export default function Arena() {
     fetchData();
   }, []);
 
-  // Lock body/window scroll when Rank Mechanism modal is open
+  // Lock body/window scroll when Rank Mechanism or Winners modal is open
   useEffect(() => {
-    if (isRankModalOpen) {
+    if (isRankModalOpen || isWinnersModalOpen) {
       const originalBodyOverflow = document.body.style.overflow;
       const originalHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = "hidden";
@@ -65,6 +67,7 @@ export default function Arena() {
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === "Escape") {
           setIsRankModalOpen(false);
+          setIsWinnersModalOpen(false);
         }
       };
       window.addEventListener("keydown", handleKeyDown);
@@ -75,7 +78,7 @@ export default function Arena() {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [isRankModalOpen]);
+  }, [isRankModalOpen, isWinnersModalOpen]);
 
   const now = new Date();
   const monthName = now.toLocaleString("default", { month: "long" }).toUpperCase();
@@ -236,15 +239,27 @@ export default function Arena() {
                   </div>
                 </div>
 
-                {/* ── RANK MECHANISM BUTTON ── */}
-                <button
-                  onClick={() => setIsRankModalOpen(true)}
-                  className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-[11px] sm:text-sm px-2.5 sm:px-5 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5"
-                >
-                  <span className="text-sm sm:text-lg">❓</span>
-                  <span className="hidden sm:inline">RANK MECHANISM</span>
-                  <span className="sm:hidden">RULES</span>
-                </button>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {/* ── WINNERS BUTTON ── */}
+                  <button
+                    onClick={() => setIsWinnersModalOpen(true)}
+                    className="bg-[#FACC15] hover:bg-yellow-400 text-slate-950 font-mono font-black text-[11px] sm:text-sm px-2.5 sm:px-4 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5"
+                  >
+                    <span className="text-sm sm:text-lg">🏆</span>
+                    <span className="hidden sm:inline">WINNERS</span>
+                    <span className="sm:hidden">TOP 3</span>
+                  </button>
+
+                  {/* ── RANK MECHANISM BUTTON ── */}
+                  <button
+                    onClick={() => setIsRankModalOpen(true)}
+                    className="bg-slate-900 hover:bg-[#0707f2] text-white font-mono font-black text-[11px] sm:text-sm px-2.5 sm:px-5 py-1 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:translate-y-0.5"
+                  >
+                    <span className="text-sm sm:text-lg">❓</span>
+                    <span className="hidden sm:inline">RANK MECHANISM</span>
+                    <span className="sm:hidden">RULES</span>
+                  </button>
+                </div>
               </div>
 
               {/* Title Header */}
@@ -1708,6 +1723,214 @@ export default function Arena() {
                 </span>
                 <button
                   onClick={() => setIsRankModalOpen(false)}
+                  className="w-full sm:w-auto bg-slate-900 text-white font-mono font-black text-xs px-5 py-1.5 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm hover:bg-[#0707f2] transition-colors cursor-pointer text-center ml-auto active:translate-y-0.5"
+                >
+                  GOT IT, WARRIOR!
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MONTHLY WINNERS (TOP 3) MODAL OVERLAY ── */}
+      <AnimatePresence>
+        {isWinnersModalOpen && (
+          <div
+            onClick={() => setIsWinnersModalOpen(false)}
+            onWheel={(e) => e.preventDefault()}
+            onTouchMove={(e) => e.preventDefault()}
+            className="fixed inset-0 z-50 flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 bg-slate-900/85 backdrop-blur-sm overflow-hidden select-none"
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -20 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="bg-white border-4 border-slate-900 brutalist-shadow max-w-4xl w-full p-3.5 sm:p-5 relative font-display text-slate-900 overflow-hidden flex flex-col gap-2.5 sm:gap-3"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b-2 sm:border-b-4 border-slate-900 pb-2 sm:pb-2.5">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <span className="text-xl sm:text-2xl">🏆</span>
+                  <div>
+                    <h2 className="text-base sm:text-xl font-black uppercase tracking-tight leading-none text-slate-900">
+                      ARENA PODIUM WINNERS
+                    </h2>
+                    <p className="font-mono text-[9px] sm:text-[11px] text-slate-600 mt-0.5">
+                      EACH MONTH'S TOP 3 DIVISION CHAMPIONS
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsWinnersModalOpen(false)}
+                  className="bg-red-600 hover:bg-slate-900 text-white font-mono font-black text-[11px] sm:text-xs px-2.5 py-1 sm:px-3 sm:py-1 border-2 border-slate-900 brutalist-shadow-sm flex items-center gap-1 cursor-pointer active:translate-y-0.5 transition-colors"
+                >
+                  <span>✕</span>
+                  <span className="font-bold">CLOSE</span>
+                </button>
+              </div>
+
+              {/* Month Selector Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  onClick={() => setSelectedWinnersMonth("CURRENT")}
+                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                    selectedWinnersMonth === "CURRENT"
+                      ? "bg-[#FACC15] text-slate-950"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  ⚡ {monthName} 2026 (LIVE)
+                </button>
+                <button
+                  onClick={() => setSelectedWinnersMonth("OCTOBER")}
+                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                    selectedWinnersMonth === "OCTOBER"
+                      ? "bg-[#FACC15] text-slate-950"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  OCTOBER 2026
+                </button>
+                <button
+                  onClick={() => setSelectedWinnersMonth("SEPTEMBER")}
+                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                    selectedWinnersMonth === "SEPTEMBER"
+                      ? "bg-[#FACC15] text-slate-950"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  SEPTEMBER 2026
+                </button>
+              </div>
+
+              {/* Top 3 Podium Lists Grid (DSA & DEV side by side) */}
+              {selectedWinnersMonth === "CURRENT" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
+                  {/* Algorithms Top 3 Column */}
+                  <div className="bg-red-50/60 border-2 border-red-900/30 p-2 sm:p-2.5">
+                    <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-red-200">
+                      <span className="font-mono font-black text-[11px] sm:text-xs text-red-900 flex items-center gap-1.5">
+                        <span>⚔️</span> ALGORITHMS (DSA) TOP 3
+                      </span>
+                      <span className="font-mono text-[9px] font-bold text-red-700 bg-red-100 px-1 border border-red-300 uppercase">
+                        SOLVES PODIUM
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {dsaSorted.slice(0, 3).map((member, idx) => (
+                        <Link
+                          key={member.member_id}
+                          to={`/member/${member.handle}`}
+                          onClick={() => setIsWinnersModalOpen(false)}
+                          className="flex items-center justify-between p-1.5 sm:p-2 border-2 border-slate-900 bg-white hover:bg-slate-50 transition-colors brutalist-shadow-sm group"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            <div className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-mono font-black text-[10px] sm:text-xs border border-slate-900 flex-shrink-0 ${
+                              idx === 0 ? "bg-[#FACC15] text-slate-950" : idx === 1 ? "bg-slate-300 text-slate-900" : "bg-amber-700 text-white"
+                            }`}>
+                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
+                            </div>
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 border border-slate-900 bg-slate-100 overflow-hidden flex-shrink-0">
+                              <AvatarImage url={member.avatar_url} handle={member.handle} name={member.full_name} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs sm:text-sm font-black uppercase text-slate-900 truncate group-hover:text-red-600 transition-colors">
+                                {member.full_name}
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] font-mono text-slate-500 truncate">
+                                {member.monthly_problems_solved || 0} Solved • LC: {member.monthly_leetcode || 0}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0 pl-2">
+                            <div className="text-sm sm:text-base font-black font-mono text-slate-900 leading-none">
+                              {Math.floor(member.monthly_dsa_score || 0)}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-red-600 uppercase mt-0.5">
+                              DSA XP
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Development Top 3 Column */}
+                  <div className="bg-blue-50/60 border-2 border-blue-900/30 p-2 sm:p-2.5">
+                    <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-blue-200">
+                      <span className="font-mono font-black text-[11px] sm:text-xs text-blue-900 flex items-center gap-1.5">
+                        <span>🛠️</span> DEVELOPMENT (DEV) TOP 3
+                      </span>
+                      <span className="font-mono text-[9px] font-bold text-blue-700 bg-blue-100 px-1 border border-blue-300 uppercase">
+                        COMMITS PODIUM
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {devSorted.slice(0, 3).map((member, idx) => (
+                        <Link
+                          key={member.member_id}
+                          to={`/member/${member.handle}`}
+                          onClick={() => setIsWinnersModalOpen(false)}
+                          className="flex items-center justify-between p-1.5 sm:p-2 border-2 border-slate-900 bg-white hover:bg-slate-50 transition-colors brutalist-shadow-sm group"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                            <div className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center font-mono font-black text-[10px] sm:text-xs border border-slate-900 flex-shrink-0 ${
+                              idx === 0 ? "bg-[#FACC15] text-slate-950" : idx === 1 ? "bg-slate-300 text-slate-900" : "bg-amber-700 text-white"
+                            }`}>
+                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
+                            </div>
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 border border-slate-900 bg-slate-100 overflow-hidden flex-shrink-0">
+                              <AvatarImage url={member.avatar_url} handle={member.handle} name={member.full_name} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs sm:text-sm font-black uppercase text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                                {member.full_name}
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] font-mono text-slate-500 truncate">
+                                {member.monthly_commits || 0} Commits • PRs: {member.monthly_prs || 0}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right flex-shrink-0 pl-2">
+                            <div className="text-sm sm:text-base font-black font-mono text-slate-900 leading-none">
+                              {Math.floor(member.monthly_dev_score || 0)}
+                            </div>
+                            <div className="text-[8px] font-mono font-bold text-blue-600 uppercase mt-0.5">
+                              DEV XP
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-100 border-2 border-slate-900 p-4 sm:p-6 text-center flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📜</span>
+                  <div className="font-mono text-xs sm:text-sm font-black uppercase text-slate-900">
+                    SEASON ARCHIVE: {selectedWinnersMonth} 2026
+                  </div>
+                  <p className="font-mono text-[10px] sm:text-xs text-slate-600 max-w-md">
+                    Historical monthly snapshots are archived at the end of each season. Active combat tracking is live for {monthName} 2026!
+                  </p>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="pt-2 sm:pt-2.5 border-t-2 border-slate-900 flex items-center justify-between">
+                <span className="font-mono text-[10px] text-slate-500 hidden sm:inline">
+                  Click on any champion to view their complete battle dossier
+                </span>
+                <button
+                  onClick={() => setIsWinnersModalOpen(false)}
                   className="w-full sm:w-auto bg-slate-900 text-white font-mono font-black text-xs px-5 py-1.5 sm:py-2 border-2 border-slate-900 brutalist-shadow-sm hover:bg-[#0707f2] transition-colors cursor-pointer text-center ml-auto active:translate-y-0.5"
                 >
                   GOT IT, WARRIOR!
