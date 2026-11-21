@@ -280,142 +280,68 @@ export default function Arena() {
           </div>
         </ScrollReveal>
 
-        {/* ── TOP #1 DIVISION CHAMPIONS BANNER (CYBER-ESPORTS DUEL CLASH HUD) ── */}
+        {/* ── TOP #1 DIVISION CHAMPIONS BANNER ── */}
         {!isLoading && topDsaLeader && topDevLeader && (
-          <ScrollReveal delay={0.03} className="mb-8 sm:mb-10">
-            <div className="border-4 border-slate-900 bg-slate-900 text-white p-4 sm:p-6 brutalist-shadow relative overflow-hidden">
-              {/* Header Bar */}
-              <div className="flex items-center justify-between border-b-2 border-slate-700 pb-2.5 sm:pb-3 mb-4">
-                <span className="font-mono text-[11px] sm:text-xs font-black uppercase text-[#FACC15] tracking-widest flex items-center gap-2">
+          <ScrollReveal delay={0.03} className="mb-10">
+            <div className="border-4 border-slate-900 bg-slate-900 text-white p-5 sm:p-6 brutalist-shadow relative overflow-hidden">
+              <div className="flex items-center justify-between border-b-2 border-slate-700 pb-3 mb-4">
+                <span className="font-mono text-xs font-black uppercase text-[#FACC15] tracking-widest flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-yellow-400 animate-ping" />
                   DIVISION CHAMPIONS • {monthName} LEAGUE
                 </span>
-                <span className="font-mono text-[10px] sm:text-xs text-slate-400 uppercase hidden sm:inline flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  LIVE APEX LEADERS
-                </span>
+                <span className="font-mono text-[10px] text-slate-300 uppercase hidden sm:inline">CURRENT #1 LEADERS</span>
               </div>
 
-              {/* Symmetrical Dual Clash Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 {/* #1 Algo Champion Card */}
-                <Link
-                  to={`/member/${topDsaLeader.handle}`}
-                  className="group relative flex items-center justify-between bg-slate-950 border-2 border-red-500 hover:border-red-400 p-3 sm:p-4 shadow-[4px_4px_0px_#ef4444] transition-all duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-950/40 via-transparent to-transparent pointer-events-none" />
-
-                  <div className="relative z-10 flex items-center gap-3 sm:gap-3.5 min-w-0">
-                    {/* Avatar with Integrated Apex Crown Badge */}
+                <div className="flex items-center justify-between bg-red-950/80 border-2 border-red-500 p-4 brutalist-shadow-sm">
+                  <div className="flex items-center gap-3.5 min-w-0">
                     <div className="relative flex-shrink-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-red-500/80 bg-slate-900 overflow-hidden font-black text-white text-lg flex items-center justify-center">
+                      <div className="w-14 h-14 border-2 border-white bg-slate-800 overflow-hidden font-black text-white text-xl flex items-center justify-center">
                         <AvatarImage
                           url={topDsaLeader.avatar_url}
                           handle={topDsaLeader.handle}
                           name={topDsaLeader.full_name}
                         />
                       </div>
-                      <div className="absolute -bottom-1 -right-1 bg-[#FACC15] text-slate-950 px-1 py-0.2 font-mono font-black text-[9px] border border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-0.5 select-none">
-                        <span>👑</span>#1
-                      </div>
+                      <span className="absolute -top-2 -right-2 text-lg">👑</span>
                     </div>
-
-                    {/* Member Info */}
                     <div className="min-w-0">
-                      <div className="inline-flex items-center gap-1 font-mono font-black text-[10px] text-red-400 uppercase tracking-wider">
-                        <span>⚔️</span>
-                        <span>#1 ALGORITHMS APEX</span>
-                      </div>
-                      <div className="text-base sm:text-lg font-black uppercase text-white tracking-tight truncate group-hover:text-[#FACC15] transition-colors">
-                        {topDsaLeader.full_name}
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-                        <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-200">
-                          {topDsaLeader.monthly_problems_solved || 0} Solved
-                        </span>
-                        <span className="text-slate-600 text-[10px]">•</span>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-950/80 border border-red-800/80 text-[10px] font-mono text-red-300 font-bold">
-                          LC: {topDsaLeader.monthly_leetcode || 0}
-                          {topDsaLeader.monthly_codeforces ? ` · CF: ${topDsaLeader.monthly_codeforces}` : ''}
-                        </span>
-                        {topDsaLeader.current_streak > 0 && (
-                          <span className="hidden xs:inline-flex items-center gap-0.5 text-[10px] font-mono font-bold text-amber-400">
-                            🔥{topDsaLeader.current_streak}d
-                          </span>
-                        )}
-                      </div>
+                      <div className="text-[11px] font-mono font-black text-red-400 uppercase tracking-wide">⚔️ #1 ALGORITHMS LEADER</div>
+                      <div className="text-lg sm:text-xl font-black truncate uppercase text-white">{topDsaLeader.full_name}</div>
+                      <div className="text-[10px] font-mono text-slate-300">SOLVED: {topDsaLeader.monthly_problems_solved || 0} (LC: {topDsaLeader.monthly_leetcode || 0} | CF: {topDsaLeader.monthly_codeforces || 0} | CC: {topDsaLeader.monthly_codechef || 0} | GFG: {topDsaLeader.monthly_gfg || 0})</div>
                     </div>
                   </div>
-
-                  {/* Symmetrical Score Readout Tile */}
-                  <div className="relative z-10 text-right flex-shrink-0 pl-3 sm:pl-4 border-l-2 border-red-900/60 flex flex-col items-end justify-center min-w-[68px] sm:min-w-[80px]">
-                    <div className="text-2xl sm:text-3xl font-black font-mono text-[#FACC15] tracking-tight leading-none">
-                      {Math.floor(topDsaLeader.monthly_dsa_score || 0)}
-                    </div>
-                    <div className="text-[9px] font-mono font-black text-red-400 uppercase tracking-widest mt-1 bg-red-950/70 px-1.5 py-0.5 border border-red-900/80">
-                      DSA XP
-                    </div>
+                  <div className="text-right flex-shrink-0 pl-3 border-l border-red-800/80">
+                    <div className="text-2xl sm:text-3xl font-black font-mono text-[#FACC15]">{Math.floor(topDsaLeader.monthly_dsa_score || 0)}</div>
+                    <div className="text-[9px] font-mono text-red-300 uppercase font-bold">DSA XP</div>
                   </div>
-                </Link>
+                </div>
 
                 {/* #1 Dev Champion Card */}
-                <Link
-                  to={`/member/${topDevLeader.handle}`}
-                  className="group relative flex items-center justify-between bg-slate-950 border-2 border-blue-500 hover:border-blue-400 p-3 sm:p-4 shadow-[4px_4px_0px_#3b82f6] transition-all duration-150 ease-out hover:-translate-y-0.5 active:translate-y-0.5 active:shadow-none cursor-pointer overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-950/40 via-transparent to-transparent pointer-events-none" />
-
-                  <div className="relative z-10 flex items-center gap-3 sm:gap-3.5 min-w-0">
-                    {/* Avatar with Integrated Apex Crown Badge */}
+                <div className="flex items-center justify-between bg-blue-950/80 border-2 border-blue-500 p-4 brutalist-shadow-sm">
+                  <div className="flex items-center gap-3.5 min-w-0">
                     <div className="relative flex-shrink-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-blue-500/80 bg-slate-900 overflow-hidden font-black text-white text-lg flex items-center justify-center">
+                      <div className="w-14 h-14 border-2 border-white bg-slate-800 overflow-hidden font-black text-white text-xl flex items-center justify-center">
                         <AvatarImage
                           url={topDevLeader.avatar_url}
                           handle={topDevLeader.handle}
                           name={topDevLeader.full_name}
                         />
                       </div>
-                      <div className="absolute -bottom-1 -right-1 bg-[#FACC15] text-slate-950 px-1 py-0.2 font-mono font-black text-[9px] border border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-0.5 select-none">
-                        <span>👑</span>#1
-                      </div>
+                      <span className="absolute -top-2 -right-2 text-lg">👑</span>
                     </div>
-
-                    {/* Member Info */}
                     <div className="min-w-0">
-                      <div className="inline-flex items-center gap-1 font-mono font-black text-[10px] text-blue-400 uppercase tracking-wider">
-                        <span>🛠️</span>
-                        <span>#1 DEV APEX</span>
-                      </div>
-                      <div className="text-base sm:text-lg font-black uppercase text-white tracking-tight truncate group-hover:text-[#FACC15] transition-colors">
-                        {topDevLeader.full_name}
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-                        <span className="font-mono text-[11px] sm:text-xs font-bold text-slate-200">
-                          {topDevLeader.monthly_commits || 0} Commits
-                        </span>
-                        <span className="text-slate-600 text-[10px]">•</span>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-950/80 border border-blue-800/80 text-[10px] font-mono text-blue-300 font-bold">
-                          PRs: {topDevLeader.monthly_prs || 0}
-                        </span>
-                        {topDevLeader.current_streak > 0 && (
-                          <span className="hidden xs:inline-flex items-center gap-0.5 text-[10px] font-mono font-bold text-amber-400">
-                            🔥{topDevLeader.current_streak}d
-                          </span>
-                        )}
-                      </div>
+                      <div className="text-[11px] font-mono font-black text-blue-400 uppercase tracking-wide">🛠️ #1 DEV LEADER</div>
+                      <div className="text-lg sm:text-xl font-black truncate uppercase text-white">{topDevLeader.full_name}</div>
+                      <div className="text-[10px] font-mono text-slate-300">{topDevLeader.monthly_commits || 0} COMMITS</div>
                     </div>
                   </div>
-
-                  {/* Symmetrical Score Readout Tile */}
-                  <div className="relative z-10 text-right flex-shrink-0 pl-3 sm:pl-4 border-l-2 border-blue-900/60 flex flex-col items-end justify-center min-w-[68px] sm:min-w-[80px]">
-                    <div className="text-2xl sm:text-3xl font-black font-mono text-[#FACC15] tracking-tight leading-none">
-                      {Math.floor(topDevLeader.monthly_dev_score || 0)}
-                    </div>
-                    <div className="text-[9px] font-mono font-black text-blue-400 uppercase tracking-widest mt-1 bg-blue-950/70 px-1.5 py-0.5 border border-blue-900/80">
-                      DEV XP
-                    </div>
+                  <div className="text-right flex-shrink-0 pl-3 border-l border-blue-800/80">
+                    <div className="text-2xl sm:text-3xl font-black font-mono text-[#FACC15]">{Math.floor(topDevLeader.monthly_dev_score || 0)}</div>
+                    <div className="text-[9px] font-mono text-blue-300 uppercase font-bold">DEV XP</div>
                   </div>
-                </Link>
+                </div>
               </div>
             </div>
           </ScrollReveal>
