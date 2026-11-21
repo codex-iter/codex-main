@@ -25,13 +25,25 @@ import HoloCard from "../components/ui/HoloCard";
 type ArenaCategory = "DSA" | "DEV" | "ALL";
 type TierFilter = "ALL" | "APEX" | "DIAMOND" | "CONTENDER";
 
+interface LeagueMonth {
+  key: string;
+  year: number;
+  month: number; // 0-indexed (10 = November)
+  label: string;
+  isCurrent: boolean;
+}
+
 export default function Arena() {
   const [data, setData] = useState<MonthlyLeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<ArenaCategory>("DSA");
   const [isRankModalOpen, setIsRankModalOpen] = useState(false);
   const [isWinnersModalOpen, setIsWinnersModalOpen] = useState(false);
-  const [selectedWinnersMonth, setSelectedWinnersMonth] = useState<string>("CURRENT");
+  const [selectedWinnersKey, setSelectedWinnersKey] = useState<string>(
+    () => `${new Date().getFullYear()}-${new Date().getMonth()}`
+  );
+  const [historicalWinners, setHistoricalWinners] = useState<Record<string, MonthlyLeaderboardEntry[]>>({});
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<TierFilter>("ALL");
   const [dsaPage, setDsaPage] = useState(1);
@@ -108,6 +120,89 @@ export default function Arena() {
       })
       .map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [data]);
+
+  // Dynamic league months archive starting from November 2026
+  const availableLeagueMonths = useMemo<LeagueMonth[]>(() => {
+    const list: LeagueMonth[] = [];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    const startYear = 2026;
+    const startMonth = 10; // November 2026 (0-indexed)
+
+    let y = currentYear;
+    let m = currentMonth;
+
+    if (y < startYear || (y === startYear && m < startMonth)) {
+      y = startYear;
+      m = startMonth;
+    }
+
+    while (y > startYear || (y === startYear && m >= startMonth)) {
+      const d = new Date(y, m, 1);
+      const mName = d.toLocaleString("en-US", { month: "long" }).toUpperCase();
+      const isCurrent = y === currentYear && m === currentMonth;
+      list.push({
+        key: `${y}-${m}`,
+        year: y,
+        month: m,
+        label: `${mName} ${y}`,
+        isCurrent,
+      });
+      m--;
+      if (m < 0) {
+        m = 11;
+        y--;
+      }
+    }
+
+    return list;
+  }, []);
+
+  const handleSelectWinnersMonth = async (m: LeagueMonth) => {
+    setSelectedWinnersKey(m.key);
+    if (!m.isCurrent && !historicalWinners[m.key]) {
+      setIsLoadingHistorical(true);
+      try {
+        const histData = await getMonthlyLeaderboard(m.year, m.month);
+        setHistoricalWinners((prev) => ({ ...prev, [m.key]: histData || [] }));
+      } catch (err) {
+        console.error("[Arena] Error fetching historical winners:", err);
+      } finally {
+        setIsLoadingHistorical(false);
+      }
+    }
+  };
+
+  const selectedMonthObj =
+    availableLeagueMonths.find((m) => m.key === selectedWinnersKey) || availableLeagueMonths[0];
+
+  const { activeDsaWinners, activeDevWinners } = useMemo(() => {
+    if (!selectedMonthObj || selectedMonthObj.isCurrent) {
+      return {
+        activeDsaWinners: dsaSorted.slice(0, 3),
+        activeDevWinners: devSorted.slice(0, 3),
+      };
+    }
+    const monthData = historicalWinners[selectedMonthObj.key] || [];
+    const dsa = [...monthData].sort((a, b) => {
+      if ((b.monthly_dsa_score || 0) !== (a.monthly_dsa_score || 0)) {
+        return (b.monthly_dsa_score || 0) - (a.monthly_dsa_score || 0);
+      }
+      return (b.current_streak || 0) - (a.current_streak || 0);
+    });
+    const dev = [...monthData].sort((a, b) => {
+      if ((b.monthly_dev_score || 0) !== (a.monthly_dev_score || 0)) {
+        return (b.monthly_dev_score || 0) - (a.monthly_dev_score || 0);
+      }
+      return (b.current_streak || 0) - (a.current_streak || 0);
+    });
+    return {
+      activeDsaWinners: dsa.slice(0, 3),
+      activeDevWinners: dev.slice(0, 3),
+    };
+  }, [selectedMonthObj, dsaSorted, devSorted, historicalWinners]);
 
   const filterList = useCallback(
     (list: (MonthlyLeaderboardEntry & { rank: number })[]) => {
@@ -251,7 +346,7 @@ export default function Arena() {
                   >
                     <span className="text-xs sm:text-lg">🏆</span>
                     <span className="hidden sm:inline">WINNERS</span>
-                    <span className="sm:hidden whitespace-nowrap">TOP 3</span>
+                    <span className="sm:hidden whitespace-nowrap">WINNER</span>
                   </button>
 
                   {/* ── RANK MECHANISM BUTTON ── */}
@@ -1775,40 +1870,41 @@ export default function Arena() {
 
               {/* Month Selector Tabs */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                <button
-                  onClick={() => setSelectedWinnersMonth("CURRENT")}
-                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
-                    selectedWinnersMonth === "CURRENT"
-                      ? "bg-[#FACC15] text-slate-950"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  ⚡ {monthName} 2026 (LIVE)
-                </button>
-                <button
-                  onClick={() => setSelectedWinnersMonth("OCTOBER")}
-                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
-                    selectedWinnersMonth === "OCTOBER"
-                      ? "bg-[#FACC15] text-slate-950"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  OCTOBER 2026
-                </button>
-                <button
-                  onClick={() => setSelectedWinnersMonth("SEPTEMBER")}
-                  className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
-                    selectedWinnersMonth === "SEPTEMBER"
-                      ? "bg-[#FACC15] text-slate-950"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  SEPTEMBER 2026
-                </button>
+                {availableLeagueMonths.map((m) => {
+                  const isSelected = selectedMonthObj?.key === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      onClick={() => handleSelectWinnersMonth(m)}
+                      className={`px-2.5 py-1 font-mono text-[10px] sm:text-xs font-black uppercase border-2 border-slate-900 brutalist-shadow-sm transition-all whitespace-nowrap cursor-pointer ${
+                        isSelected
+                          ? "bg-[#FACC15] text-slate-950"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {m.isCurrent ? `⚡ ${m.label} (LIVE)` : m.label}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Top 3 Podium Lists Grid (DSA & DEV side by side) */}
-              {selectedWinnersMonth === "CURRENT" ? (
+              {isLoadingHistorical ? (
+                <div className="py-12 text-center font-mono font-bold text-xs sm:text-sm text-slate-600 flex items-center justify-center gap-2">
+                  <span className="inline-block animate-spin text-lg">⚙️</span>
+                  <span>FETCHING {selectedMonthObj?.label} ARCHIVE...</span>
+                </div>
+              ) : activeDsaWinners.length === 0 && activeDevWinners.length === 0 ? (
+                <div className="bg-slate-100 border-2 border-slate-900 p-4 sm:p-6 text-center flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📜</span>
+                  <div className="font-mono text-xs sm:text-sm font-black uppercase text-slate-900">
+                    SEASON ARCHIVE: {selectedMonthObj?.label}
+                  </div>
+                  <p className="font-mono text-[10px] sm:text-xs text-slate-600 max-w-md">
+                    No recorded combat snapshots found for this season period yet.
+                  </p>
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
                   {/* Algorithms Top 3 Column */}
                   <div className="bg-red-50/60 border-2 border-red-900/30 p-2 sm:p-2.5">
@@ -1822,7 +1918,7 @@ export default function Arena() {
                     </div>
 
                     <div className="space-y-1.5">
-                      {dsaSorted.slice(0, 3).map((member, idx) => (
+                      {activeDsaWinners.map((member, idx) => (
                         <Link
                           key={member.member_id}
                           to={`/member/${member.handle}`}
@@ -1873,7 +1969,7 @@ export default function Arena() {
                     </div>
 
                     <div className="space-y-1.5">
-                      {devSorted.slice(0, 3).map((member, idx) => (
+                      {activeDevWinners.map((member, idx) => (
                         <Link
                           key={member.member_id}
                           to={`/member/${member.handle}`}
@@ -1911,16 +2007,6 @@ export default function Arena() {
                       ))}
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="bg-slate-100 border-2 border-slate-900 p-4 sm:p-6 text-center flex flex-col items-center justify-center gap-2">
-                  <span className="text-3xl">📜</span>
-                  <div className="font-mono text-xs sm:text-sm font-black uppercase text-slate-900">
-                    SEASON ARCHIVE: {selectedWinnersMonth} 2026
-                  </div>
-                  <p className="font-mono text-[10px] sm:text-xs text-slate-600 max-w-md">
-                    Historical monthly snapshots are archived at the end of each season. Active combat tracking is live for {monthName} 2026!
-                  </p>
                 </div>
               )}
 
