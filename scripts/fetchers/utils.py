@@ -73,16 +73,25 @@ async def safe_fetch(
                     resp.raise_for_status()
                     return await resp.json(content_type=None)
         except asyncio.TimeoutError:
-            log.warning("    TIMEOUT fetching %s", url)
+            log.warning("    TIMEOUT fetching %s (Attempt %d/%d)", url, attempt + 1, max_retries)
+            if attempt + 1 < max_retries:
+                await asyncio.sleep(retry_delay(None, attempt))
+                continue
             return {}
         except aiohttp.ClientResponseError as exc:
-            if exc.status == 404:
-                log.info("    HTTP 404 (Not Found) fetching %s", url)
-            else:
-                log.warning("    HTTP %s fetching %s — %s", exc.status, url, exc.message)
+            if exc.status in (400, 404):
+                log.info("    HTTP %s (Not Found) fetching %s", exc.status, url)
+                return {}
+            log.warning("    HTTP %s fetching %s (Attempt %d/%d) — %s", exc.status, url, attempt + 1, max_retries, exc.message)
+            if exc.status in (500, 502, 503, 504) and attempt + 1 < max_retries:
+                await asyncio.sleep(retry_delay(exc.headers.get("Retry-After") if exc.headers else None, attempt))
+                continue
             return {}
         except Exception as exc:  # noqa: BLE001
-            log.warning("    ERROR fetching %s — %s", url, exc)
+            log.warning("    ERROR fetching %s (Attempt %d/%d) — %s", url, attempt + 1, max_retries, exc)
+            if attempt + 1 < max_retries:
+                await asyncio.sleep(retry_delay(None, attempt))
+                continue
             return {}
             
     return {}
