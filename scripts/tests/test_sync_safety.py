@@ -243,3 +243,64 @@ class SnapshotSafetyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(clean_handle("https://www.codechef.com/users/chef_123"), "chef_123")
         self.assertEqual(clean_handle(""), "")
         self.assertEqual(clean_handle(None), "")
+
+    async def test_new_member_with_valid_hackerrank_is_not_skipped(self):
+        member = {
+            "id": "1f7e6fd6-6585-4319-9088-5276a0263ca2",
+            "full_name": "Aditya Gupta",
+            "github_handle": "adityagupta2786",
+            "leetcode_handle": "adityagupta2786",
+            "gfg_handle": "adityagupta2786",
+            "hackerrank_handle": "aditya_gupta2781",
+        }
+        gh_data = {"github_contributions": 10, "github_repos": 1, "github_prs": 0, "github_issues": 0, "_gql_ok": True, "_fetch_ok": True}
+        lc_data = {"leetcode_total": 5, "leetcode_easy": 5, "leetcode_medium": 0, "leetcode_hard": 0, "_summary_ok": True, "_fetch_ok": True}
+        gfg_data = {"gfg_solved": 2, "gfg_score": 2, "gfg_school": 0, "gfg_basic": 0, "gfg_easy": 2, "gfg_medium": 0, "gfg_hard": 0, "_fetch_ok": True}
+        hr_data = {"hackerrank_badges": 1, "hr_badges_list": [{"id": "java", "name": "Java"}], "hr_topics": {}, "_fetch_ok": True}
+
+        with patch.object(main, "fetch_github", new=AsyncMock(return_value=gh_data)), \
+             patch.object(main, "fetch_leetcode", new=AsyncMock(return_value=lc_data)), \
+             patch.object(main, "fetch_gfg", new=AsyncMock(return_value=gfg_data)), \
+             patch.object(main, "fetch_hackerrank", new=AsyncMock(return_value=hr_data)), \
+             patch.object(db, "get_recent_snapshots", return_value=[]):
+            result = await main.sync_member_async(object(), object(), member, "2026-11-22")
+
+        self.assertNotIn("_skip_sync", result)
+        self.assertEqual(result["hackerrank_badges"], 1)
+        self.assertEqual(result["_is_new_member"], True)
+
+    async def test_fetch_hackerrank_validates_retrieved_message_payload(self):
+        from fetchers.hackerrank import fetch_hackerrank
+        from unittest.mock import MagicMock
+        badges_resp = {
+            "status": "success",
+            "message": "retrieved",
+            "badges": [{"id": "java", "displayName": "Java"}],
+            "data": {"count": 1, "list": [{"id": "java", "name": "Java"}]}
+        }
+        stats_resp = {
+            "status": "success",
+            "message": "retrieved",
+            "data": {"topicAnalysis": [{"topic": "Introduction", "count": 10}]}
+        }
+        with patch("fetchers.hackerrank.safe_fetch", new=AsyncMock(side_effect=[badges_resp, stats_resp])):
+            res = await fetch_hackerrank(MagicMock(), "aditya_gupta2781")
+
+        self.assertTrue(res["_fetch_ok"])
+        self.assertEqual(res["hackerrank_badges"], 1)
+        self.assertEqual(res["hr_topics"], {"Introduction": 10})
+
+    async def test_fetch_hackerrank_rejects_error_payload(self):
+        from fetchers.hackerrank import fetch_hackerrank
+        from unittest.mock import MagicMock
+        err_resp = {
+            "status": "error",
+            "message": "user does not exist",
+            "badges": [],
+            "data": None
+        }
+        with patch("fetchers.hackerrank.safe_fetch", new=AsyncMock(return_value=err_resp)):
+            res = await fetch_hackerrank(MagicMock(), "non_existent_user")
+
+        self.assertFalse(res["_fetch_ok"])
+        self.assertEqual(res["hackerrank_badges"], 0)

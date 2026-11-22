@@ -21,6 +21,16 @@ async def fetch_hackerrank(session: aiohttp.ClientSession, handle: str) -> dict:
     import urllib.parse
     from .utils import clean_handle
     clean_h = clean_handle(handle)
+
+    if not clean_h or " " in clean_h:
+        log.warning("    Invalid HackerRank handle '%s' (handles cannot contain spaces)", handle)
+        return {
+            "hackerrank_badges": 0,
+            "hr_badges_list": [],
+            "hr_topics": {},
+            "_fetch_ok": False,
+        }
+
     encoded_handle = urllib.parse.quote(clean_h)
     BASE = f"https://hackerrank-stats.tashif.codes/{encoded_handle}"
 
@@ -57,12 +67,20 @@ async def fetch_hackerrank(session: aiohttp.ClientSession, handle: str) -> dict:
     except Exception as exc:
         log.warning("    HackerRank topics unavailable for %s: %s", handle, exc)
 
+    is_error = (
+        badges_payload.get("status") == "error"
+        or bool(badges_payload.get("error"))
+        or "does not exist" in str(badges_payload.get("message", "")).lower()
+        or "not found" in str(badges_payload.get("message", "")).lower()
+    )
     is_valid = bool(
         badges_payload
         and isinstance(badges_payload, dict)
-        and not badges_payload.get("error")
-        and not badges_payload.get("message")
-        and ("data" in badges_payload or "badges" in badges_payload)
+        and not is_error
+        and (
+            isinstance(badges_payload.get("data"), dict)
+            or isinstance(badges_payload.get("badges"), list)
+        )
     )
 
     result = {
