@@ -14,15 +14,29 @@ import AmbientBackground from "./components/animations/AmbientBackground"
 import { CustomScrollbar } from "./components/ui/CustomScrollbar"
 
 import Projects from "./pages/Projects"
+import Leaderboard from "./pages/Leaderboard"
+import MemberProfile from "./pages/MemberProfile"
+import Arena from "./pages/Arena"
+
+import { useEffect } from "react"
+
+// ScrollToTop component to ensure route transitions always start at top of page
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
 
 // Inner component so useLocation works inside Router
 function AnimatedRoutes() {
-
   const location = useLocation()
   return (
     <>
+      <ScrollToTop />
       <TransitionOverlay />
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<PageTransition><Home /></PageTransition>} />
           <Route path="/blogs" element={<PageTransition><Blogs /></PageTransition>} />
@@ -30,6 +44,9 @@ function AnimatedRoutes() {
           <Route path="/projects" element={<PageTransition><Projects /></PageTransition>} />
           <Route path="/team" element={<PageTransition><Team /></PageTransition>} />
           <Route path="/blogs/:slug" element={<PageTransition><BlogDetail /></PageTransition>} />
+          <Route path="/leaderboard" element={<PageTransition><Leaderboard /></PageTransition>} />
+          <Route path="/profile/:handle" element={<PageTransition><MemberProfile /></PageTransition>} />
+          <Route path="/arena" element={<PageTransition><Arena /></PageTransition>} />
         </Routes>
       </AnimatePresence>
     </>

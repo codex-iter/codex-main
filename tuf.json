@@ -1,0 +1,447 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "TUF Stats API",
+        "description": "FastAPI service for public takeUforward DSA progress statistics.",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/{username}/profile": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Profile",
+                "operationId": "get_profile__username__profile_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}/stats/svg": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Stats SVG card",
+                "operationId": "get_stats_svg__username__stats_svg_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    },
+                    {
+                        "name": "theme",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Card theme: dark or light",
+                            "default": "dark",
+                            "title": "Theme"
+                        },
+                        "description": "Card theme: dark or light"
+                    },
+                    {
+                        "name": "exclude",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Comma-separated topics to exclude from the topic bars",
+                            "title": "Exclude"
+                        },
+                        "description": "Comma-separated topics to exclude from the topic bars"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}/stats": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Stats",
+                "operationId": "get_stats__username__stats_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}/contests": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Contests",
+                "operationId": "get_contests__username__contests_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}/rating": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Rating",
+                "operationId": "get_rating__username__rating_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}/heatmap": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Heatmap",
+                "operationId": "get_heatmap__username__heatmap_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    },
+                    {
+                        "name": "view",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "all | last_365 | year",
+                            "default": "all",
+                            "title": "View"
+                        },
+                        "description": "all | last_365 | year"
+                    },
+                    {
+                        "name": "year",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Required when view=year",
+                            "title": "Year"
+                        },
+                        "description": "Required when view=year"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}/badges": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Badges",
+                "operationId": "get_badges__username__badges_get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/{username}": {
+            "get": {
+                "tags": [
+                    "Canonical"
+                ],
+                "summary": "Get Summary",
+                "operationId": "get_summary__username__get",
+                "parameters": [
+                    {
+                        "name": "username",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Username"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
